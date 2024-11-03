@@ -1,0 +1,14 @@
+{
+  "extends": "./configs/tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@common/*": ["./src/*"],
+    }
+  },
+  "include": [
+    "src",
+    "configs/*.mjs",
+    "configs/*.js",
+    "configs/*.ts",
+  ]
+}
