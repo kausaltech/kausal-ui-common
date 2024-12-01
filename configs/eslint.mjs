@@ -33,6 +33,7 @@ export function getEslintConfig(rootDir) {
           },
         ],
         '@typescript-eslint/consistent-type-imports': 'warn',
+        '@typescript-eslint/no-require-imports': 'off',
       },
       languageOptions: {
         parserOptions: {
