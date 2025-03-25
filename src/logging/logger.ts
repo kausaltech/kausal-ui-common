@@ -1,7 +1,9 @@
+import { REQUEST_CORRELATION_ID_HEADER } from '../constants/headers.mjs';
 import { customAlphabet } from 'nanoid';
-import type { Bindings, DestinationStream, Level, Logger, LoggerOptions, WriteFn } from 'pino';
+import type { IncomingHttpHeaders } from 'node:http';
+import type { Bindings, DestinationStream, Level, Logger, LoggerOptions as PinoLoggerOptions, WriteFn } from 'pino';
 import { pino } from 'pino';
-import { envToBool } from '../env/utils';
+
 
 let rootLogger: Logger;
 
@@ -16,7 +18,7 @@ export type LogRecord = {
   [key: string]: unknown;
 };
 
-function setupEdgeLoggingJson(options: LoggerOptions) {
+function setupEdgeLoggingJson(options: PinoLoggerOptions) {
   const write: WriteFn = (obj: LogRecord) => {
     const { time, level, ...rest } = obj;
     const rec = {
@@ -58,7 +60,7 @@ export async function initRootLogger() {
   }
   const isProd = (process.env.NODE_ENV || 'development') == 'production';
   const logLevel = process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
-  const options: LoggerOptions = {
+  const options: PinoLoggerOptions = {
     level: logLevel,
     formatters: {},
   };
@@ -106,18 +108,87 @@ function getSimpleLogger() {
   return pino();
 }
 
-export const getLogger = (name?: string, bindings?: Bindings, parent?: Logger) => {
-  if (!parent) {
+export const LOGGER_CORRELATION_ID = 'request-id';
+
+type LoggerRequest = {
+  headers: IncomingHttpHeaders | Headers;
+}
+
+export type LoggerOptions = {
+  name?: string;
+  bindings?: Bindings;
+  parent?: Logger;
+  request?: LoggerRequest
+}
+
+export function getLogger(opts?: LoggerOptions): Logger;
+export function getLogger(name?: string, bindings?: Bindings, parent?: Logger): Logger;
+
+export function getLogger(optsOrName?: LoggerOptions | string, bindings?: Bindings, parent?: Logger): Logger {
+  let opts: LoggerOptions;
+  if (typeof optsOrName === 'object') {
+    opts = optsOrName;
+  } else if (typeof optsOrName === 'string') {
+    opts = { name: optsOrName, bindings: bindings, parent: parent };
+  } else {
+    opts = {};
+  }
+
+  if (!opts.parent) {
     if (!rootLogger) {
       parent = getSimpleLogger();
     } else {
       parent = rootLogger;
     }
+  } else {
+    parent = opts.parent;
   }
-  if (name || bindings) {
-    return parent.child({ ...(bindings ?? {}), logger: name });
+
+  const extraBindings: Bindings = {};
+  if (opts.request) {
+    const { request } = opts;
+    const headers = request.headers;
+    if (headers) {
+      const correlationIdHeader = REQUEST_CORRELATION_ID_HEADER.toLowerCase();
+      let correlationId: string | undefined;
+      if (typeof headers.get === 'function') {
+        const val = headers.get(correlationIdHeader);
+        if (val) {
+          correlationId = val;
+        }
+      } else {
+        const val = headers[correlationIdHeader] as string | string[] | undefined;
+        if (typeof val === 'string') {
+          correlationId = val;
+        } else if (Array.isArray(val)) {
+          correlationId = val[0];
+        }
+      }
+      if (correlationId) {
+        extraBindings[LOGGER_CORRELATION_ID] = correlationId;
+      }
+    }
+  }
+
+  if (opts.name || opts.bindings || Object.keys(extraBindings).length > 0) {
+    const allBindings = {
+      ...(opts.bindings ?? {}),
+      ...extraBindings,
+    };
+    if (opts.name) {
+      allBindings.logger = opts.name;
+    }
+    return parent.child(allBindings);
   }
   return parent;
+};
+
+export const getLoggerAsync = async (opts?: LoggerOptions) => {
+  const parent = opts?.parent;
+  if (!parent) {
+    await initRootLogger();
+  }
+  return getLogger(opts);
 };
 
 const ID_ALPHABET = '346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz';

@@ -1,7 +1,6 @@
 // @ts-check
-
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-import { mkdir } from 'node:fs/promises';
+import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
@@ -27,10 +26,10 @@ function tryImportThemePackage(packageNames) {
 /**
  * @param {string} rootDir
  */
-export async function initializeThemes(rootDir) {
+export function initializeThemes(rootDir) {
   const staticPath = join(rootDir, 'public', 'static');
-  await mkdir(staticPath, { recursive: true });
-  const releaseThemeLock = await lockfile.lock('public/static');
+  mkdirSync(staticPath, { recursive: true });
+  const releaseThemeLock = lockfile.lockSync('public/static');
   const require = createRequire(rootDir);
   try {
     const destPath = join(rootDir, 'public', 'static', 'themes');
@@ -49,6 +48,6 @@ export async function initializeThemes(rootDir) {
       generateThemeSymlinksPublic(destPath, { verbose: false });
     }
   } finally {
-    await releaseThemeLock();
+    releaseThemeLock();
   }
 }

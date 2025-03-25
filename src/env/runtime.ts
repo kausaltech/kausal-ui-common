@@ -1,6 +1,5 @@
-import { env as getPublicEnv } from 'next-runtime-env/build/script/env';
 import { getLogger } from '../logging';
-import { coerceToBool } from './utils';
+import { coerceToBool, envToBool } from './utils';
 import { getProjectId } from './static';
 
 const isServer = typeof window === 'undefined';
@@ -11,6 +10,7 @@ export type DeploymentType =
   | 'staging'
   | 'development'
   | 'testing'
+  | 'preview'
   | 'ci'
   | 'wip';
 
@@ -19,9 +19,24 @@ const KNOWN_DEPLOYMENT_TYPES = [
   'staging',
   'development',
   'testing',
+  'preview',
   'ci',
   'wip',
 ];
+
+export const WINDOW_PUBLIC_ENV_KEY = '__PUBLIC_ENV';
+
+export const PUBLIC_ENV_VARS: Record<string, keyof RuntimeConfig | undefined> = {
+  WATCH_BACKEND_URL: undefined,
+  PATHS_BACKEND_URL: undefined,
+  DEPLOYMENT_TYPE: 'deploymentType',
+  WILDCARD_DOMAINS: 'wildcardDomains',
+  SENTRY_DSN: 'sentryDsn',
+  SENTRY_TRACE_SAMPLE_RATE: 'sentryTraceSampleRate',
+  BUILD_ID: 'buildId',
+  AUTH_ISSUER: undefined,
+};
+
 
 type RuntimeConfig = {
   isServer: boolean;
@@ -44,19 +59,19 @@ function ensureKnownDeploymentType(val: string): DeploymentType {
 }
 
 function env(key: string) {
-  if (isServer) {
+  if (typeof window === 'undefined') {
     return process.env[key];
   }
-  if (!/^NEXT_PUBLIC_/i.test(key)) {
-    key = `NEXT_PUBLIC_${key}`;
+  if (!Object.hasOwn(PUBLIC_ENV_VARS, key)) {
+    throw new Error(`Unknown public environment variable: ${key}`);
   }
-  return getPublicEnv(key);
+  const env = window[WINDOW_PUBLIC_ENV_KEY] as Record<string, string>;
+  return env[key];
 }
 
 export function getDeploymentType(): DeploymentType {
   const val =
     env('DEPLOYMENT_TYPE') ||
-    env('NEXT_PUBLIC_DEPLOYMENT_TYPE') ||
     'development';
   return ensureKnownDeploymentType(val);
 }
@@ -91,7 +106,7 @@ export function getPathsGraphQLUrl() {
 
 export function getWildcardDomains(): string[] {
   const domains =
-    env('WILDCARD_DOMAINS') ?? env('NEXT_PUBLIC_WILDCARD_DOMAINS');
+    env('WILDCARD_DOMAINS');
 
   // In dev mode, default to `localhost` being a wildcard domain.
   if (!domains) return isLocal ? ['localhost'] : [];
@@ -101,12 +116,12 @@ export function getWildcardDomains(): string[] {
 
 export function getAuthIssuer() {
   return (
-    env('NEXT_PUBLIC_AUTH_ISSUER') || env('AUTH_ISSUER') || getDefaultBackendUrl()
+    env('AUTH_ISSUER') || getDefaultBackendUrl()
   );
 }
 
 export function getSentryDsn(): string | undefined {
-  return env('SENTRY_DSN') || env('NEXT_PUBLIC_SENTRY_DSN');
+  return env('SENTRY_DSN');
 }
 
 export function getBuildId(): string {
@@ -116,9 +131,9 @@ export function getBuildId(): string {
 }
 
 export function getAssetPrefix(): string {
-  const envVal = env('ASSET_PREFIX') || '';
+  const envVal = process.env.NEXTJS_ASSET_PREFIX || '';
   if (envVal.endsWith('/')) {
-    throw new Error("ASSET_PREFIX must not end with '/'");
+    throw new Error("NEXTJS_ASSET_PREFIX must not end with '/'");
   }
   return envVal;
 }
@@ -142,17 +157,18 @@ export function getSentryReplaysSampleRate(): number {
   return getSentryRate('SENTRY_REPLAYS_SAMPLE_RATE', defaultRate);
 }
 
-export const authIssuer = env('NEXT_PUBLIC_AUTH_ISSUER');
-
 export const logGraphqlQueries =
-  isServer && process.env.LOG_GRAPHQL_QUERIES === 'true';
+  isServer && envToBool('LOG_GRAPHQL_QUERIES', false);
 
 /**
  * Returns the URL to use for Spotlight, or null if Spotlight is not enabled.
  */
 export function getSpotlightUrl() {
   if (!isLocal) return null;
+
+  // The value below is set by the Webpack define plugin in browser builds..
   const envValue = process.env.SENTRY_SPOTLIGHT;
+
   if (!envValue) return null;
   const boolValue = coerceToBool(envValue);
   if (boolValue) {
@@ -183,19 +199,14 @@ export function getRuntimeConfig() {
   return config;
 }
 
-const PUBLIC_ENV_VARS = [
-  'WATCH_BACKEND_URL',
-  'PATHS_BACKEND_URL',
-  'DEPLOYMENT_TYPE',
-  'WILDCARD_DOMAINS',
-  'SENTRY_DSN',
-  'SENTRY_TRACE_SAMPLE_RATE',
-  'BUILD_ID',
-  'AUTH_ISSUER',
-];
-
-export function getPublicEnvVariableNames() {
-  return PUBLIC_ENV_VARS.filter((key) => key in process.env);
+export function getPublicEnv() {
+  const keyVals = Object.keys(PUBLIC_ENV_VARS)
+    .filter((key) => key in process.env)
+    .map((key) => ([
+      key,
+      process.env[key]?.trim(),
+    ]))
+  return Object.fromEntries(keyVals) as Record<string, string>;
 }
 
 export function printRuntimeConfig(appName: string) {
@@ -213,5 +224,7 @@ export function printRuntimeConfig(appName: string) {
   console.log(p('🔗 GraphQL backend URL'), runtimeConfig.gqlUrl);
   console.log(p('Wildcard domains'), runtimeConfig.wildcardDomains.join(', '));
   console.log(p('Sentry DSN'), runtimeConfig.sentryDsn);
-  console.log(p('Asset prefix'), getAssetPrefix() || undefined);
+  if (isServer) {
+    console.log(p('Asset prefix'), getAssetPrefix() || undefined);
+  }
 }

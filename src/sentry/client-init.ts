@@ -4,10 +4,11 @@ import type { BrowserOptions } from '@sentry/nextjs';
 import type * as logging from '@common/logging';
 
 import { API_SENTRY_TUNNEL_PATH, FAKE_SENTRY_DSN, GRAPHQL_CLIENT_PROXY_PATH } from '@common/constants/routes.mjs';
-import { getSpotlightUrl, getSentryTraceSampleRate, getWatchBackendUrl, getPathsBackendUrl } from '@common/env/runtime';
+import { getSpotlightUrl, getSentryTraceSampleRate, getWatchBackendUrl, getPathsBackendUrl, getAssetPrefix } from '@common/env/runtime';
 import { envToBool } from '@common/env/utils';
 import type { SentrySpan } from '@sentry/core';
-import { initRootLogger } from '@common/logging/logger';
+import { initRootLogger, getLogger } from '@common/logging/logger';
+import type { Logger } from 'pino';
 
 function makeNullTransport(_options: BaseTransportOptions) {
   return Sentry.createTransport(
@@ -20,8 +21,24 @@ function makeNullTransport(_options: BaseTransportOptions) {
   );
 }
 
+const isStaticUrl = (url: string) => {
+  if (url.startsWith('/static/')) return true;
+  if (url.startsWith('/_next/')) return true;
+  const assetPrefix = getAssetPrefix();
+  if (assetPrefix) {
+    if (url.startsWith(assetPrefix)) return true;
+  }
+  return false;
+};
+
 export function initSentryBrowser() {
-  initRootLogger().catch((err) => err);
+  let logger: Logger | undefined;
+  const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
+
+  initRootLogger()
+    .then(() => logger = getLogger('sentry'))
+    .catch(() => void 0);
+
   const spotlightUrl = getSpotlightUrl();
   const tracePropagationTargets: BrowserOptions['tracePropagationTargets'] = [/\/.*/]
   if (getWatchBackendUrl()) {
@@ -39,7 +56,9 @@ export function initSentryBrowser() {
     ignoreErrors: ['NEXT_NOT_FOUND'],
     parentSpanIsAlwaysRootSpan: false,
     tracesSampler(ctx: SamplingContext) {
-      console.log('tracesSampler', ctx);
+      if (otelDebug) {
+        logger?.debug({ctx}, 'tracesSampler');
+      }
       if (ctx.parentSampled !== undefined) return ctx.parentSampled;
       return getSentryTraceSampleRate();
     },
@@ -47,16 +66,23 @@ export function initSentryBrowser() {
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: envToBool(process.env.SENTRY_DEBUG, false),
     replaysOnErrorSampleRate: 1.0,
-    replaysSessionSampleRate: envToBool(process.env.SENTRY_SESS, false) ? 1.0 : 0.0,
+    replaysSessionSampleRate: envToBool(process.env.SENTRY_SESSION_REPLAYS, false) ? 1.0 : 0.0,
     transport: process.env.SENTRY_DSN ? undefined : makeNullTransport,
     integrations(integrations) {
       integrations = integrations.filter((integration) => integration.name !== 'BrowserTracing');
       integrations.push(
         Sentry.browserTracingIntegration({
           shouldCreateSpanForRequest: (url: string) => {
+            if (isStaticUrl(url)) return false;
+
+            if (otelDebug) {
+              logger?.info({url}, 'shouldCreateSpanForRequest');
+            }
+            /*
             if (url === GRAPHQL_CLIENT_PROXY_PATH) {
               return false;
             }
+            */
             return true;
           },
         })
@@ -84,9 +110,7 @@ export function initSentryBrowser() {
   };
   const client = Sentry.init(config);
 
-  if (envToBool(process.env.OTEL_DEBUG, false)) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const logger = (require('@common/logging') as typeof logging).getLogger('otel');
+  if (otelDebug) {
     const logSpanEvent = (span: SentrySpan, event: 'Start' | 'End') => {
       const ctx = span.spanContext();
       // @ts-expect-error access private
@@ -94,7 +118,7 @@ export function initSentryBrowser() {
 
       const recording = span.isRecording() ? ' recording' : ' non-recording';
 
-      logger.debug(span, `${event}${event === 'Start' ? recording : ''} span: ${ctx.traceId}:${ctx.spanId} ${_name}`);
+      logger?.debug(span, `${event}${event === 'Start' ? recording : ''} span: ${ctx.traceId}:${ctx.spanId} ${_name}`);
     };
     client?.on('spanStart', (span) => {
       // @ts-expect-error access private

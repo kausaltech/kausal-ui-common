@@ -1,1 +1,1 @@
-export { generateCorrelationID, getLogger } from './logger';
+export { generateCorrelationID, getLogger, getLoggerAsync } from './logger';

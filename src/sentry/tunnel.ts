@@ -1,11 +1,11 @@
 import { getLogger } from '../logging';
 
-export async function forwardToSentry(envelopeBytes: ArrayBuffer, sentryDsn: URL) {
+export async function forwardToSentry(envelopeBytes: ArrayBuffer | string, sentryDsn: URL) {
   const logger = getLogger('sentry-proxy');
-  const envelope = new TextDecoder().decode(envelopeBytes);
+  const envelope = typeof envelopeBytes === 'string' ? envelopeBytes : new TextDecoder().decode(envelopeBytes);
   const piece = envelope.split('\n')[0];
-  const header = JSON.parse(piece);
-  const dsn = new URL(header['dsn']);
+  const header = JSON.parse(piece) as object;
+  const dsn = new URL(header['dsn'] as string);
   const projectId = dsn.pathname?.replace('/', '');
 
   if (dsn.hostname !== sentryDsn.hostname) {

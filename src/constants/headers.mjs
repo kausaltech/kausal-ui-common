@@ -5,3 +5,5 @@ export const PATHS_INSTANCE_HOSTNAME_HEADER = 'x-paths-instance-hostname';
 export const PATHS_INSTANCE_IDENTIFIER_HEADER = 'x-paths-instance-identifier';
 export const THEME_IDENTIFIER_HEADER = 'x-theme-identifier';
 export const BASE_PATH_HEADER = 'x-base-path';
+export const REQUEST_CORRELATION_ID_HEADER = 'X-Correlation-ID';
+export const MIDDLEWARE_RAN_HEADER = 'x-middleware-ran';

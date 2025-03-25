@@ -19,6 +19,7 @@ export function getEslintConfig(rootDir) {
     ...compat.extends('next/core-web-vitals', 'next/typescript', 'plugin:storybook/recommended'),
     ...ts.configs.recommendedTypeChecked,
     {
+      ignores: ['src/common/__generated__/*'],
       rules: {
         'no-unused-vars': 'off',
         '@typescript-eslint/no-unused-vars': [

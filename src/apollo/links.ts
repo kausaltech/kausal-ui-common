@@ -95,6 +95,7 @@ export const createSentryLink = (uri: string) => {
         };
         //console.log('headers before', JSON.stringify(headers));
         if (typeof window !== 'undefined') {
+          /*
           const baggage = Sentry.spanToBaggageHeader(span);
           const trace = Sentry.spanToTraceHeader(span);
           if (baggage) {
@@ -103,6 +104,7 @@ export const createSentryLink = (uri: string) => {
           if (trace) {
             headers['trace'] = trace;
           }
+            */
         } else {
           otelApi.propagation.inject(otelApi.context.active(), headers);
         }

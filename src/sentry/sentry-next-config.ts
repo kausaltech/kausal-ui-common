@@ -39,7 +39,6 @@ export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
     tunnelRoute: undefined,
 
     // Hides source maps from generated client bundles
-    hideSourceMaps: false,
     bundleSizeOptimizations: {
       excludeDebugStatements: !sentryDebug,
       excludeReplayIframe: true,
@@ -58,6 +57,7 @@ export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
     ],
     automaticVercelMonitors: false,
     autoInstrumentMiddleware: false,
+    autoInstrumentServerFunctions: false,
     sourcemaps: {
       disable: !uploadEnabled,
     },

@@ -4,8 +4,8 @@ import { HttpLink } from '@apollo/client/link/http/http.cjs';
 import type { Bindings, Logger } from 'pino';
 
 import type { ApolloClientType, DefaultApolloContext } from '@common/apollo/index.js';
-import { getLogger } from './logger.js';
-import { isLocal } from '@common/env/static.js';
+import { getLogger } from './logger';
+import { isLocal } from '@common/env/static';
 import type { ErrorResponse } from '@apollo/client/link/error';
 
 const LOG_MAX_ERRORS = 3;
@@ -40,7 +40,8 @@ export function logApolloError(error: ApolloErrorLike, options?: ApolloErrorCont
   const operation = 'operation' in error ? error.operation : options?.operation;
   const operationName = operation?.operationName;
   const operationCtx = operation?.getContext() as DefaultApolloContext | undefined;
-  const variables = operation?.variables ? JSON.stringify(operation?.variables, null, 0) : null;
+  const opVars = operation?.variables;
+  const variables = opVars && Object.keys(opVars).length ? JSON.stringify(opVars, null, 0) : null;
 
   const logCtx: Bindings = {};
   if (operationName) logCtx.graphql_operation = operationName;

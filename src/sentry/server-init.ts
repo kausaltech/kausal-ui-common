@@ -1,37 +1,24 @@
 import { context, propagation } from '@opentelemetry/api';
+import { trace } from '@opentelemetry/api';
+import { serializeEnvelope } from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
-import {
-  type EdgeOptions,
-  type NodeOptions,
-  httpIntegration,
-  nativeNodeFetchIntegration,
-} from '@sentry/nextjs';
-import type {
-  BaseTransportOptions,
-  Envelope,
-  IntegrationFn,
-  Options,
-  SamplingContext,
-  Span,
-  Client,
-} from '@sentry/types';
-import { serializeEnvelope } from '@sentry/utils';
-
-import { FAKE_SENTRY_DSN, GRAPHQL_CLIENT_PROXY_PATH, HEALTH_CHECK_PUBLIC_PATH, SENTRY_TUNNEL_PUBLIC_PATH } from '@common/constants/routes.mjs';
-import {
-  getPathsGraphQLUrl,
-  getRuntimeConfig,
-  getSentryTraceSampleRate,
-  getSpotlightUrl,
-  getWatchGraphQLUrl,
-} from '@common/env';
-import { envToBool } from '@common/env/utils';
-import { ensureTrailingSlash } from '@common/utils';
-import { getLogger, initRootLogger } from '@common/logging/logger';
+import { type EdgeOptions, type NodeOptions, httpIntegration, nativeNodeFetchIntegration } from '@sentry/nextjs';
+import type { BaseTransportOptions, Client, Envelope, IntegrationFn, Options, SamplingContext, Span } from '@sentry/core';
 import type { Logger } from 'pino';
 
+import { API_SENTRY_TUNNEL_PATH, FAKE_SENTRY_DSN, GRAPHQL_CLIENT_PROXY_PATH, HEALTH_CHECK_PUBLIC_PATH, SENTRY_TUNNEL_PUBLIC_PATH } from '@common/constants/routes.mjs';
+import { getPathsGraphQLUrl, getRuntimeConfig, getSentryTraceSampleRate, getSpotlightUrl, getWatchGraphQLUrl } from '@common/env';
+import { envToBool } from '@common/env/utils';
+import { getLogger, initRootLogger } from '@common/logging/logger';
+import { ensureTrailingSlash } from '@common/utils';
 
-const IGNORE_PATHS = [SENTRY_TUNNEL_PUBLIC_PATH, HEALTH_CHECK_PUBLIC_PATH];
+
+const IGNORE_PATHS = [
+  SENTRY_TUNNEL_PUBLIC_PATH,
+  HEALTH_CHECK_PUBLIC_PATH,
+  API_SENTRY_TUNNEL_PATH,
+  '/__nextjs_original-stack-frame',
+];
 const IGNORE_PREFIXES = ['/static', '/_next', '/public'].map(ensureTrailingSlash);
 
 let logger: Logger;
@@ -73,12 +60,11 @@ const edgeSpotlightIntegration: IntegrationFn = (options: { url: string }) => {
         logger.warn('Too many errors sending envelopes to Spotlight, disabling integration');
       }
     });
-  }
+  };
 
   return {
     name: 'EdgeSpotlight',
-    setup(_client) {
-    },
+    setup(_client) {},
     afterAllSetup(client) {
       client.on('beforeEnvelope', (envelope: Envelope) => sendEnvelope(client, envelope));
     },
@@ -122,10 +108,14 @@ function getCommonOptions() {
     // If we're using Spotlight, and a DSN is not set, we need to create a fake transport so that tracing works.
     transport: runtimeConfig.sentryDsn || !enableSpotlight ? undefined : makeNullTransport,
     tracesSampler(ctx: SamplingContext) {
-      const transactionPrefix = (process.env.NEXT_RUNTIME === 'edge') ? 'middleware ' : '';
+      const transactionPrefix = process.env.NEXT_RUNTIME === 'edge' ? 'middleware ' : '';
 
-      const matchesVerb = (verb: 'GET' | 'POST', path: string) => ctx.name == `${transactionPrefix}${verb} ${path}`;
-      if (matchesVerb('GET', GRAPHQL_CLIENT_PROXY_PATH) || matchesVerb('POST', GRAPHQL_CLIENT_PROXY_PATH)) {
+      const matchesVerb = (verb: 'GET' | 'POST', path: string) =>
+        ctx.name == `${transactionPrefix}${verb} ${path}`;
+      if (
+        matchesVerb('GET', GRAPHQL_CLIENT_PROXY_PATH) ||
+        matchesVerb('POST', GRAPHQL_CLIENT_PROXY_PATH)
+      ) {
         return false;
       }
 
@@ -176,18 +166,21 @@ function getNodeFetchIntegrationOptions(): NodeFetchOptions {
 
 type HttpIntegrationOptions = Parameters<typeof httpIntegration>[0];
 
+const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
+
 function getHttpIntegrationOptions(): HttpIntegrationOptions {
+  const logger = getLogger('http-integration');
   const options: HttpIntegrationOptions = {
     spans: true,
     disableIncomingRequestSpans: false,
     ignoreIncomingRequests(urlPath, _request) {
-      return false;
       if (IGNORE_PATHS.some((path) => urlPath === path)) {
         return true;
       }
       if (IGNORE_PREFIXES.some((prefix) => urlPath.startsWith(prefix))) {
         return true;
       }
+      logger.info({ urlPath }, `incoming request not ignored`);
       return false;
     },
     ignoreOutgoingRequests(url, request) {
@@ -215,10 +208,27 @@ function getHttpIntegrationOptions(): HttpIntegrationOptions {
           return;
         }
         const { headers } = request;
-        const hasPropagationHeaders = propagation
+        const existingPropagationHeaders = propagation
           .fields()
-          .some((header) => header.toLowerCase() in headers);
-        if (hasPropagationHeaders) return;
+          .filter((header) => header.toLowerCase() in headers)
+          .map((header) => [header, headers[header.toLowerCase()]]);
+        if (existingPropagationHeaders.length > 0) {
+          if (otelDebug) {
+            logger.info(
+              { ...Object.fromEntries(existingPropagationHeaders) },
+              'propagation headers already present, skipping'
+            );
+          }
+          return;
+        }
+        if (otelDebug) {
+          const span = trace.getSpan(context.active());
+          const spanContext = span?.spanContext();
+          logger.info(
+            { traceId: spanContext?.traceId, spanId: spanContext?.spanId },
+            'injecting propagation headers'
+          );
+        }
         propagation.inject(context.active(), headers);
       },
     },

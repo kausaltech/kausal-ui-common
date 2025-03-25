@@ -1,16 +1,20 @@
 import type { Context, TextMapGetter, TextMapSetter } from '@opentelemetry/api';
 import { SpanKind } from '@opentelemetry/api';
-import type { ContextManager, Span } from '@opentelemetry/api';
+import type { Span } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
 import { SamplingDecision, type SamplingResult } from '@opentelemetry/sdk-trace-base';
-import type { ReadableSpan, Span as TraceSpan } from '@opentelemetry/sdk-trace-base';
-import type { SpanProcessor } from '@opentelemetry/sdk-trace-node';
+import type { ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { ATTR_URL_FULL, SEMATTRS_HTTP_URL } from '@opentelemetry/semantic-conventions';
 import { spanToJSON } from '@sentry/nextjs';
 import { SentryPropagator, SentrySampler } from '@sentry/opentelemetry';
-import type { SpanAttributes } from '@sentry/types';
+import type { Client, SpanAttributes } from '@sentry/core';
 import type { CSPair } from 'ansi-styles';
 import styles from 'ansi-styles';
+import type { Logger } from 'pino';
+
+import * as Sentry from '@sentry/nextjs';
+
+import { getLogger } from '@common/logging';
 
 const PALETTE = [
   '#db5f57',
@@ -87,30 +91,27 @@ const withColor = (text: string, color: CSPair, underline: boolean = false) => {
   );
 };
 
-const runtimeName = () => {
-  const runtime = process.env.NEXT_RUNTIME!;
-  let color: CSPair;
-  if (runtime === 'edge') {
-    color = styles.yellow;
-  } else if (runtime === 'nodejs') {
-    color = styles.blue;
-  } else {
-    color = styles.gray;
-  }
-  return withColor(runtime.toUpperCase().padEnd(10), color);
-};
-
 const traceIdColored = (traceId: string) => {
   return withColor(traceId, randomColor(traceId), true);
 };
 
-function spanColored(span: Span | undefined) {
+function spanNameColored(name: string) {
+  return `[${withColor(name, styles.blue)}]`;
+}
+
+function spanColored(span: ReadableSpan | undefined) {
   if (!span) return withColor('<no span>', styles.gray);
   const { traceId, spanId } = span.spanContext();
-  return `${withColor(traceId, randomColor(traceId), true)}:${withColor(spanId, randomColor(spanId), true)}`;
+  return `${traceIdColored(traceId)}:${withColor(spanId, randomColor(spanId), true)} ${spanNameColored(span.name)}`;
 }
 
 export class DebugSampler extends SentrySampler {
+  private readonly logger: Logger;
+
+  constructor(client: Client) {
+    super(client);
+    this.logger = getLogger('debug-sampler');
+  }
   shouldSample(
     context: Context,
     traceId: string,
@@ -120,38 +121,39 @@ export class DebugSampler extends SentrySampler {
     _links: unknown
   ): SamplingResult {
     const eventName = `${withColor('shouldSample', styles.magenta)}`;
-    console.log(
-      `${runtimeName()} ${traceIdColored(traceId)} ${eventName} ${spanKindToName(spanKind)} ${spanName}`
+    const logBase = `${traceIdColored(traceId)} ${spanNameColored(spanName)}`;
+    this.logger.info(
+      {...attributes}, `${logBase} ${spanKindToName(spanKind)} ${eventName}`
     );
-    const attributesString =
-      attributes && Object.keys(attributes).length > 0 ? JSON.stringify(attributes) : null;
-    if (attributesString) {
-      console.log(`  attributes: ${attributesString}`);
-    }
-    if (attributes && attributes['user_agent.original'] === 'Next.js Middleware') debugger;
+    //console.dir(context);
     const ret = super.shouldSample(context, traceId, spanName, spanKind, attributes, _links);
     const traceState = ret.traceState?.serialize() || 'none';
     const decisionAttributes = ret.attributes ? JSON.stringify(ret.attributes) : 'none';
-    console.log(
-      `${runtimeName()} ${traceIdColored(traceId)} ${eventName} decision ${decisionToName(ret.decision)} <traceState: ${traceState}> <attributes: ${decisionAttributes}>`
+    this.logger.info(
+      `${logBase} decision ${decisionToName(ret.decision)} <traceState: ${traceState}> <attributes: ${decisionAttributes}>`
     );
     return ret;
   }
 }
 export class DebugSpanProcessor implements SpanProcessor {
+  private readonly logger: Logger;
+
+  constructor() {
+    this.logger = getLogger('span-processor');
+  }
   forceFlush(): Promise<void> {
     return Promise.resolve();
   }
-  onStart(span: TraceSpan, _parentContext: Context): void {
-    console.log(
-      `${runtimeName()} ${spanColored(span)} ${withColor('onStart', styles.greenBright)} ${span.isRecording()} ${withColor(span.name, styles.blue)}  ${spanKindToName(span.kind)}`
+  onStart(span_: Span, _parentContext: Context): void {
+    const span = span_ as unknown as ReadableSpan;
+    this.logger.info(
+      {recording: span_.isRecording(), ...span.attributes}, `${spanColored(span)} ${withColor('onStart', styles.greenBright)} ${spanKindToName(span.kind)}`
     );
-    console.log(`  attributes: ${JSON.stringify(span.attributes)}`);
-    //if (process.env.NEXT_RUNTIME === 'edge') debugger;
+    console.dir(span_.spanContext());
   }
-  onEnd(span: TraceSpan & ReadableSpan): void {
-    console.log(
-      `${runtimeName()} ${spanColored(span)} ${withColor('onEnd', styles.green)} ${span.name}`
+  onEnd(span: ReadableSpan): void {
+    this.logger.info(
+      `${spanColored(span)} ${withColor('onEnd', styles.green)}`
     );
   }
   shutdown(): Promise<void> {
@@ -164,7 +166,9 @@ const SENTRY_TRACE_STATE_URL = 'sentry.url';
 function getCurrentURL(span: Span): string | undefined {
   const spanData = spanToJSON(span).data;
   // `ATTR_URL_FULL` is the new attribute, but we still support the old one, `SEMATTRS_HTTP_URL`, for now.
-  const urlAttribute = (spanData?.[SEMATTRS_HTTP_URL] || spanData?.[ATTR_URL_FULL]) as string | undefined;
+  const urlAttribute = (spanData?.[SEMATTRS_HTTP_URL] || spanData?.[ATTR_URL_FULL]) as
+    | string
+    | undefined;
   if (urlAttribute) {
     return urlAttribute;
   }
@@ -179,39 +183,29 @@ function getCurrentURL(span: Span): string | undefined {
 }
 
 export class DebugPropagator extends SentryPropagator {
+  private readonly logger: Logger;
+
+  constructor() {
+    super();
+    this.logger = getLogger('propagator');
+  }
   inject(context: Context, carrier: unknown, setter: TextMapSetter): void {
     const activeSpan = trace.getSpan(context);
     const url = activeSpan && getCurrentURL(activeSpan);
 
-    console.log(
-      `${runtimeName()} ${spanColored(activeSpan)} ${withColor('inject', styles.cyan)} ${
+    this.logger.info(
+      {url}, `${spanColored(activeSpan as unknown as ReadableSpan)} ${withColor('inject', styles.cyan)} ${
         url ? `url: ${url}` : ''
       }`
     );
     super.inject(context, carrier, setter);
   }
   extract(context: Context, carrier: unknown, getter: TextMapGetter): Context {
-    console.log(`${runtimeName()} ${withColor('extract', styles.cyan)}`);
-    //debugger;
-    return super.extract(context, carrier, getter);
+    const ret = super.extract(context, carrier, getter);
+    const activeSpan = trace.getSpan(ret);
+    this.logger.info(
+      `${spanColored(activeSpan as unknown as ReadableSpan)} ${withColor('extracted', styles.cyan)}`
+    );
+    return ret;
   }
-}
-
-export function getDebugContextManager<ContextManagerInstance extends ContextManager>(
-  _ContextManagerClass: new (...args: unknown[]) => ContextManagerInstance
-): typeof _ContextManagerClass {
-  // @ts-expect-error TS does not like this, but we know this is fine
-  class DebugContextManager extends _ContextManagerClass {
-    with<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
-      context: Context,
-      fn: F,
-      thisArg?: ThisParameterType<F>,
-      ...args: A
-    ): ReturnType<F> {
-      const span = trace.getSpan(context);
-      console.log(`${runtimeName()} ${withColor('with', styles.cyan)} ${spanColored(span)}`);
-      return super.with(context, fn, thisArg, ...args);
-    }
-  }
-  return DebugContextManager as unknown as typeof _ContextManagerClass;
 }
