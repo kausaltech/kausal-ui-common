@@ -4,6 +4,8 @@ export const isEdgeRuntime = isServer && process.env.NEXT_RUNTIME === 'edge';
 export const isNodeRuntime = isServer && process.env.NEXT_RUNTIME === 'nodejs';
 
 export type ProjectId = 'watch-ui' | 'paths-ui';
+export type ProductId = 'watch' | 'paths';
+
 const KNOWN_PROJECTS = ['watch-ui', 'paths-ui'];
 
 let projectId: ProjectId;
@@ -17,4 +19,9 @@ export function getProjectId() {
   }
   projectId = envProjectId as ProjectId;
   return projectId;
+}
+
+export function getProductId() {
+  const projectId = getProjectId();
+  return projectId === 'watch-ui' ? 'watch' : 'paths';
 }

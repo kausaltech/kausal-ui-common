@@ -1,6 +1,5 @@
-import { defineIntegration } from '@sentry/core';
-import type { Client, Envelope, Event, IntegrationFn } from '@sentry/types';
-import { serializeEnvelope } from '@sentry/utils';
+import { defineIntegration, serializeEnvelope } from '@sentry/core';
+import type { Client, Envelope, Event, IntegrationFn } from '@sentry/core';
 
 export type SpotlightConnectionOptions = {
   /**

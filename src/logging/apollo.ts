@@ -38,14 +38,12 @@ export type ApolloErrorLike = ApolloError | ErrorResponse;
 
 export function logApolloError(error: ApolloErrorLike, options?: ApolloErrorContext) {
   const operation = 'operation' in error ? error.operation : options?.operation;
-  const operationName = operation?.operationName;
   const operationCtx = operation?.getContext() as DefaultApolloContext | undefined;
   const opVars = operation?.variables;
   const variables = opVars && Object.keys(opVars).length ? JSON.stringify(opVars, null, 0) : null;
 
   const logCtx: Bindings = {};
-  if (operationName) logCtx.graphql_operation = operationName;
-  if (variables) logCtx.graphql_variables = variables;
+  if (variables) logCtx['graphql-variables'] = variables;
   if (options?.component) logCtx.component = options.component;
   const uri = options?.uri ?? (options?.client && findUriFromClient(options.client)) ?? null;
   if (uri) logCtx.graphql_uri = uri;

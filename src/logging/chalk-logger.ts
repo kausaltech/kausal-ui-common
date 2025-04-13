@@ -146,12 +146,7 @@ const write: WriteFn = (obj: LogRecord) => {
     };
     writeLog(record);
   } catch (err) {
-    if (err instanceof Error) {
-      // Without a `replacer` argument, stringify on Error results in `{}`
-      console.log(JSON.stringify(err, ['name', 'message', 'stack']));
-    } else {
-      console.log(JSON.stringify({ message: 'Unknown error type' }));
-    }
+    console.error(err);
   }
 };
 

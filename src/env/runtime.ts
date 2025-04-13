@@ -1,4 +1,4 @@
-import { getLogger } from '../logging';
+import { getLogger, isPrettyLogger } from '../logging';
 import { coerceToBool, envToBool } from './utils';
 import { getProjectId } from './static';
 
@@ -51,6 +51,7 @@ type RuntimeConfig = {
   sentryDsn: string | undefined;
   sentryTraceSampleRate: number;
   sentryReplaysSampleRate: number;
+  sentrySpotlightUrl: string | null;
 };
 
 function ensureKnownDeploymentType(val: string): DeploymentType {
@@ -130,6 +131,10 @@ export function getBuildId(): string {
   return 'dev';
 }
 
+export function getSentryRelease(): string {
+  return `${getProjectId()}@${getBuildId()}`;
+}
+
 export function getAssetPrefix(): string {
   const envVal = process.env.NEXTJS_ASSET_PREFIX || '';
   if (envVal.endsWith('/')) {
@@ -148,13 +153,14 @@ function getSentryRate(envVar: string, defaultRate?: number) {
 }
 
 export function getSentryTraceSampleRate(): number {
-  return getSentryRate('SENTRY_TRACE_SAMPLE_RATE');
+  return getSentryRate('SENTRY_TRACE_SAMPLE_RATE', 1.0);
 }
 
 export function getSentryReplaysSampleRate(): number {
   const debugEnabled = process.env.SENTRY_DEBUG === '1';
-  const defaultRate = debugEnabled ? 1.0 : 0.0;
-  return getSentryRate('SENTRY_REPLAYS_SAMPLE_RATE', defaultRate);
+  const replaysEnabled = envToBool(process.env.SENTRY_SESSION_REPLAYS, false);
+  const defaultRate = (debugEnabled || replaysEnabled) ? 1.0 : 0.0;
+  return defaultRate;
 }
 
 export const logGraphqlQueries =
@@ -164,8 +170,6 @@ export const logGraphqlQueries =
  * Returns the URL to use for Spotlight, or null if Spotlight is not enabled.
  */
 export function getSpotlightUrl() {
-  if (!isLocal) return null;
-
   // The value below is set by the Webpack define plugin in browser builds..
   const envValue = process.env.SENTRY_SPOTLIGHT;
 
@@ -195,6 +199,7 @@ export function getRuntimeConfig() {
     sentryDsn: getSentryDsn(),
     sentryTraceSampleRate: getSentryTraceSampleRate(),
     sentryReplaysSampleRate: getSentryReplaysSampleRate(),
+    sentrySpotlightUrl: getSpotlightUrl(),
   };
   return config;
 }
@@ -211,7 +216,7 @@ export function getPublicEnv() {
 
 export function printRuntimeConfig(appName: string) {
   const runtimeConfig = getRuntimeConfig();
-  if (!isLocal) {
+  if (!isPrettyLogger()) {
     const logger = getLogger();
     logger.info({ runtimeConfig }, `${appName} starting`);
     return;

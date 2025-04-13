@@ -7,3 +7,7 @@ export const THEME_IDENTIFIER_HEADER = 'x-theme-identifier';
 export const BASE_PATH_HEADER = 'x-base-path';
 export const REQUEST_CORRELATION_ID_HEADER = 'X-Correlation-ID';
 export const MIDDLEWARE_RAN_HEADER = 'x-middleware-ran';
+export const FORWARDED_FOR_HEADER = 'x-forwarded-for';
+export const FORWARDED_HOST_HEADER = 'x-forwarded-host';
+export const FORWARDED_PROTO_HEADER = 'x-forwarded-proto';
+export const FORWARDED_HEADER = 'forwarded';

@@ -17,8 +17,6 @@ import { envToBool } from '../env/utils';
 
 const sentryAuthToken = secrets.SENTRY_AUTH_TOKEN || process.env.SENTRY_AUTH_TOKEN;
 
-const isLocal = process.env.NODE_ENV === 'development';
-
 const sentryDebug = envToBool(process.env.SENTRY_DEBUG, false);
 
 export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
@@ -76,7 +74,7 @@ export function getSentryWebpackDefines(isServer: boolean): Record<string, strin
   return {
     'process.env.SENTRY_DSN': JSON.stringify(sentryDsnPlaceholder ?? sentryDsn ?? null),
     'process.env.SENTRY_DEBUG': JSON.stringify(sentryDebug ? '1' : '0'),
-    'process.env.SENTRY_SPOTLIGHT': isLocal ? JSON.stringify(spotlightUrl) : '0',
+    'process.env.SENTRY_SPOTLIGHT': spotlightUrl ? JSON.stringify(spotlightUrl) : '0',
     'process.env.OTEL_DEBUG': JSON.stringify(envToBool(process.env.OTEL_DEBUG, false) ? '1' : '0'),
     'process.env.SENTRY_SESSION_REPLAYS': JSON.stringify(
       envToBool(process.env.SENTRY_SESSION_REPLAYS, false) ? '1' : '0'

@@ -2,12 +2,13 @@ import { context, propagation } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
 import { serializeEnvelope } from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
-import { type EdgeOptions, type NodeOptions, httpIntegration, nativeNodeFetchIntegration } from '@sentry/nextjs';
+import { type EdgeOptions, type NodeOptions, } from '@sentry/nextjs';
+import type { httpIntegration, nativeNodeFetchIntegration } from '@sentry/node';
 import type { BaseTransportOptions, Client, Envelope, IntegrationFn, Options, SamplingContext, Span } from '@sentry/core';
 import type { Logger } from 'pino';
 
 import { API_SENTRY_TUNNEL_PATH, FAKE_SENTRY_DSN, GRAPHQL_CLIENT_PROXY_PATH, HEALTH_CHECK_PUBLIC_PATH, SENTRY_TUNNEL_PUBLIC_PATH } from '@common/constants/routes.mjs';
-import { getPathsGraphQLUrl, getRuntimeConfig, getSentryTraceSampleRate, getSpotlightUrl, getWatchGraphQLUrl } from '@common/env';
+import { getPathsGraphQLUrl, getRuntimeConfig, getSentryRelease, getSentryTraceSampleRate, getSpotlightUrl, getWatchGraphQLUrl } from '@common/env';
 import { envToBool } from '@common/env/utils';
 import { getLogger, initRootLogger } from '@common/logging/logger';
 import { ensureTrailingSlash } from '@common/utils';
@@ -104,6 +105,7 @@ function getCommonOptions() {
     // If we're using Spotlight, we need to set a fake DSN so that trace propagation works.
     dsn: runtimeConfig.sentryDsn ?? (enableSpotlight ? FAKE_SENTRY_DSN : undefined),
     environment,
+    release: getSentryRelease(),
     enabled: enableSpotlight ? true : undefined,
     // If we're using Spotlight, and a DSN is not set, we need to create a fake transport so that tracing works.
     transport: runtimeConfig.sentryDsn || !enableSpotlight ? undefined : makeNullTransport,
@@ -114,7 +116,8 @@ function getCommonOptions() {
         ctx.name == `${transactionPrefix}${verb} ${path}`;
       if (
         matchesVerb('GET', GRAPHQL_CLIENT_PROXY_PATH) ||
-        matchesVerb('POST', GRAPHQL_CLIENT_PROXY_PATH)
+        matchesVerb('POST', GRAPHQL_CLIENT_PROXY_PATH) ||
+        matchesVerb('POST', API_SENTRY_TUNNEL_PATH)
       ) {
         return false;
       }
@@ -164,26 +167,30 @@ function getNodeFetchIntegrationOptions(): NodeFetchOptions {
   return options;
 }
 
-type HttpIntegrationOptions = Parameters<typeof httpIntegration>[0];
-
 const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
 
-function getHttpIntegrationOptions(): HttpIntegrationOptions {
-  const logger = getLogger('http-integration');
-  const options: HttpIntegrationOptions = {
-    spans: true,
-    disableIncomingRequestSpans: false,
-    ignoreIncomingRequests(urlPath, _request) {
+type HttpIntegrationOptions = Parameters<typeof httpIntegration>[0];
+type HttpInstrumentationOptions = NonNullable<NonNullable<HttpIntegrationOptions>['instrumentation']>['_experimentalConfig'];
+
+
+export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
+  const logger = getLogger('http-instrumentation', { noSpan: true });
+  const options: HttpInstrumentationOptions = {
+    enabled: true,
+    ignoreIncomingRequestHook(request) {
+      const urlPath = request.url?.split('?')[0] ?? '';
       if (IGNORE_PATHS.some((path) => urlPath === path)) {
         return true;
       }
       if (IGNORE_PREFIXES.some((prefix) => urlPath.startsWith(prefix))) {
         return true;
       }
-      logger.info({ urlPath }, `incoming request not ignored`);
+      if (otelDebug) {
+        logger.info({ urlPath }, `incoming request not ignored`);
+      }
       return false;
     },
-    ignoreOutgoingRequests(url, request) {
+    ignoreOutgoingRequestHook(request) {
       const spotlightUrl = getSpotlightUrl();
       if (spotlightUrl) {
         // Something weird is going on with the url argument, so we'll use
@@ -199,47 +206,49 @@ function getHttpIntegrationOptions(): HttpIntegrationOptions {
       }
       return false;
     },
-    instrumentation: {
-      _experimentalConfig: {
-        enabled: true,
-      },
-      requestHook: (span: Span, request) => {
-        if (!('headers' in request)) {
-          return;
-        }
-        const { headers } = request;
-        const existingPropagationHeaders = propagation
-          .fields()
-          .filter((header) => header.toLowerCase() in headers)
-          .map((header) => [header, headers[header.toLowerCase()]]);
-        if (existingPropagationHeaders.length > 0) {
-          if (otelDebug) {
-            logger.info(
-              { ...Object.fromEntries(existingPropagationHeaders) },
-              'propagation headers already present, skipping'
-            );
-          }
-          return;
-        }
+    requestHook: (span: Span, request) => {
+      if (!('headers' in request)) {
+        return;
+      }
+      const { headers } = request;
+      const existingPropagationHeaders = propagation
+        .fields()
+        .filter((header) => header.toLowerCase() in headers)
+        .map((header) => [header, headers[header.toLowerCase()]]);
+      if (existingPropagationHeaders.length > 0) {
         if (otelDebug) {
-          const span = trace.getSpan(context.active());
-          const spanContext = span?.spanContext();
           logger.info(
-            { traceId: spanContext?.traceId, spanId: spanContext?.spanId },
-            'injecting propagation headers'
+            { ...Object.fromEntries(existingPropagationHeaders) },
+            'propagation headers already present, skipping'
           );
         }
-        propagation.inject(context.active(), headers);
-      },
+        return;
+      }
+      if (otelDebug) {
+        const span = trace.getSpan(context.active());
+        const spanContext = span?.spanContext();
+        logger.info(
+          { 'trace-id': spanContext?.traceId, 'span-id': spanContext?.spanId },
+          'injecting propagation headers'
+        );
+      }
+      propagation.inject(context.active(), headers);
     },
   };
   return options;
 }
 
 function getNodeOptions() {
+  // We require() the Sentry module here to avoid an edge runtime build error.
+  const SentryModule = require('@sentry/nextjs') as typeof Sentry;
+  const customizedIntegrations = [
+    SentryModule.httpIntegration({spans: false}),
+    SentryModule.nativeNodeFetchIntegration(getNodeFetchIntegrationOptions()),
+  ];
   return {
     ...getCommonOptions(),
     skipOpenTelemetrySetup: true,
+    registerEsmLoaderHooks: true,
     spotlight: getSpotlightUrl() || undefined,
     integrations: (integrations) => {
       const filtered = integrations
@@ -249,10 +258,7 @@ function getNodeOptions() {
           }
           return true;
         })
-        .concat(
-          httpIntegration(getHttpIntegrationOptions()),
-          nativeNodeFetchIntegration(getNodeFetchIntegrationOptions())
-        );
+        .concat(customizedIntegrations);
       return filtered;
     },
   } satisfies NodeOptions;
@@ -284,6 +290,10 @@ function getEdgeOptions() {
 export async function initSentry(): Promise<Client | undefined> {
   await initRootLogger();
   logger = getLogger('sentry');
-  Sentry.init(process.env.NEXT_RUNTIME === 'edge' ? getEdgeOptions() : getNodeOptions());
+  if (process.env.NEXT_RUNTIME === 'edge') {
+    Sentry.init(getEdgeOptions());
+  } else {
+    Sentry.init(getNodeOptions());
+  }
   return Sentry.getClient();
 }

@@ -5,7 +5,7 @@ import * as otelApi from '@opentelemetry/api';
 import { ATTR_URL_FULL } from '@opentelemetry/semantic-conventions';
 import { SPAN_STATUS_ERROR, SPAN_STATUS_OK } from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
-import type { StartSpanOptions } from '@sentry/types';
+import type { StartSpanOptions } from '@sentry/core';
 import { Kind, type OperationDefinitionNode } from 'graphql';
 import type { Bindings } from 'pino';
 
@@ -29,10 +29,17 @@ const logOperation = new ApolloLink((operation, forward: NextLink) => {
   const { setContext, operationName, getContext } = operation;
   const queryId = generateCorrelationID();
   const ctx = getContext() as DefaultApolloContext;
+
+  const logBindings: Bindings = { 'graphql-operation': operationName, 'graphql-query-id': queryId, };
+  if (ctx.traceId && ctx.spanId) {
+    logBindings['trace-id'] = ctx.traceId;
+    logBindings['span-id'] = ctx.spanId;
+  }
   const opLogger = (ctx.logger ?? getLogger('graphql')).child(
-    { 'graphql-operation': operationName, 'graphql-query-id': queryId },
+    logBindings,
     { level: !isServer && isProductionDeployment() ? 'fatal' : 'info' }
   );
+
   setContext({ ...ctx, start: Date.now(), logger: opLogger });
   opLogger.info(`Starting GraphQL request ${operationName}`);
   return forward(operation).map((data) => {
@@ -78,13 +85,18 @@ export const createSentryLink = (uri: string) => {
   const link = new ApolloLink((operation, forward) => {
     const definition = extractDefinition(operation);
     const opType = definition.operation;
+    const context = operation.getContext() as DefaultApolloContext;
+    const attrs: Record<string, string> = {};
+    if (context.componentName) {
+      attrs['react.component'] = context.componentName;
+    }
     const spanOpts: StartSpanOptions = {
       op: `http.graphql.${opType}`,
       name: operation.operationName,
       onlyIfParent: true,
-      //forceTransaction: true,
       attributes: {
         [ATTR_URL_FULL]: uri,
+        ...attrs,
       },
     };
     return Sentry.startSpanManual(spanOpts, (span, finish) => {
@@ -93,7 +105,6 @@ export const createSentryLink = (uri: string) => {
         const headers: DefaultApolloContext['headers'] = {
           ...previousContext.headers,
         };
-        //console.log('headers before', JSON.stringify(headers));
         if (typeof window !== 'undefined') {
           /*
           const baggage = Sentry.spanToBaggageHeader(span);
@@ -104,20 +115,18 @@ export const createSentryLink = (uri: string) => {
           if (trace) {
             headers['trace'] = trace;
           }
-            */
+          */
         } else {
           otelApi.propagation.inject(otelApi.context.active(), headers);
         }
-        if (typeof window !== 'undefined') {
-          console.log('headers after', JSON.stringify(headers));
-        }
         return {
           headers,
+          traceId: span.spanContext().traceId,
+          spanId: span.spanContext().spanId,
         };
       });
       return forward(operation).map((result) => {
         if (result.errors) {
-          //span.setAttribute('http.status_code', 500);
           span.setStatus({
             code: SPAN_STATUS_ERROR,
             message: result.errors[0].message,

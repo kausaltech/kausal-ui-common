@@ -2,7 +2,9 @@ import { REQUEST_CORRELATION_ID_HEADER } from '../constants/headers.mjs';
 import { customAlphabet } from 'nanoid';
 import type { IncomingHttpHeaders } from 'node:http';
 import type { Bindings, DestinationStream, Level, Logger, LoggerOptions as PinoLoggerOptions, WriteFn } from 'pino';
+import otel from '@opentelemetry/api';
 import { pino } from 'pino';
+import { envToBool } from '../env/utils';
 
 
 let rootLogger: Logger;
@@ -15,6 +17,7 @@ export type LogRecord = {
   logger?: string;
   pid?: number;
   hostname?: string;
+  noSpan?: boolean;
   [key: string]: unknown;
 };
 
@@ -48,10 +51,32 @@ function setupEdgeLoggingJson(options: PinoLoggerOptions) {
   };
 }
 
+export function isPrettyLogger() {
+  if (process.env.NODE_ENV === 'production') return false;
+  if (envToBool(process.env.KUBERNETES_LOGGING, false)) return false;
+  return true;
+}
+
 function getGlobalContext() {
   return {
     runtime: typeof window !== 'undefined' ? 'browser' : process.env.NEXT_RUNTIME,
   };
+}
+
+function getSpanContext() {
+  const span = otel.trace.getActiveSpan();
+  if (!span) return {};
+  return {
+    [LOGGER_TRACE_ID]: span.spanContext().traceId,
+    [LOGGER_SPAN_ID]: span.spanContext().spanId,
+  };
+}
+
+function addDynamicGlobalAttributes(_mergeObject: object, _level: number, logger: pino.Logger) {
+  const attrs = {
+    ...(!logger['noSpan'] ? getSpanContext(): {}),
+  }
+  return attrs;
 }
 
 export async function initRootLogger() {
@@ -63,10 +88,15 @@ export async function initRootLogger() {
   const options: PinoLoggerOptions = {
     level: logLevel,
     formatters: {},
+    mixin: addDynamicGlobalAttributes,
+    mixinMergeStrategy(mergeObject, mixinObject) {
+      const out = { ...mixinObject, ...mergeObject };
+      return out;
+    },
   };
   options.formatters!.level = (label, _number) => ({ level: label });
 
-  const prodLogging = process.env.NODE_ENV === 'production';
+  const prodLogging = !isPrettyLogger();
   let stream: DestinationStream | undefined;
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     if (prodLogging) {
@@ -91,6 +121,13 @@ export async function initRootLogger() {
     } else {
       const { setupBrowserLogging } = await import('./chalk-logger');
       await setupBrowserLogging(options);
+      options.browser!.formatters!.log = (object) => {
+        const attrs = getSpanContext();
+        return {
+          ...attrs,
+          ...object,
+        };
+      }
     }
   }
   rootLogger = pino(options, stream).child(getGlobalContext());
@@ -109,6 +146,8 @@ function getSimpleLogger() {
 }
 
 export const LOGGER_CORRELATION_ID = 'request-id';
+export const LOGGER_TRACE_ID = 'trace-id';
+export const LOGGER_SPAN_ID = 'span-id';
 
 type LoggerRequest = {
   headers: IncomingHttpHeaders | Headers;
@@ -119,6 +158,7 @@ export type LoggerOptions = {
   bindings?: Bindings;
   parent?: Logger;
   request?: LoggerRequest
+  noSpan?: boolean;
 }
 
 export function getLogger(opts?: LoggerOptions): Logger;
@@ -178,8 +218,13 @@ export function getLogger(optsOrName?: LoggerOptions | string, bindings?: Bindin
     if (opts.name) {
       allBindings.logger = opts.name;
     }
-    return parent.child(allBindings);
+    const logger = parent.child(allBindings);
+    if (opts.noSpan) {
+      logger['noSpan'] = true;
+    }
+    return logger;
   }
+
   return parent;
 };
 

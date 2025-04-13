@@ -32,7 +32,6 @@ export function getNextConfig(projectRoot: string): NextConfig {
     },
     experimental: {
       optimizePackageImports: ['lodash'],
-      nodeMiddleware: true,
       clientInstrumentationHook: true,
     },
     reactStrictMode: true,
