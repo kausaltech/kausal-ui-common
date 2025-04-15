@@ -6,7 +6,6 @@
 		protocols h1 h2c
 		trusted_proxies static private_ranges
 		client_ip_headers X-Forwarded-For X-Real-IP
-		metrics
 	}
 	log {
 		format json {
@@ -15,7 +14,33 @@
 		output stderr
 		exclude admin tls
 	}
+	metrics
 	persist_config off
+}
+
+(cors) {
+	@cors_preflight method OPTIONS
+	@cors {
+		header Origin *
+	}
+	handle @cors_preflight {
+		header {
+			Access-Control-Allow-Origin *
+			Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+			Access-Control-Allow-Headers *
+			defer
+		}
+		respond "" 204
+	}
+
+	handle @cors {
+		header {
+			Access-Control-Allow-Origin *
+			Access-Control-Allow-Headers *
+			Access-Control-Expose-Headers *
+			defer
+		}
+	}
 }
 
 http://:{$CADDY_PORT}
@@ -26,33 +51,31 @@ log {
 }
 
 encode zstd gzip
-header Access-Control-Allow-Origin *
-header Access-Control-Allow-Headers *
-header Access-Control-Allow-Methods "GET, HEAD"
 
 route /metrics {
 	@denied not remote_ip private_ranges
 	abort @denied
-
-	metrics /metrics
+	metrics
 }
 
 route /_caddyhealth {
-	skip_log
+	log_skip
 	respond "OK" 200
 }
 
 route /_next/static/* {
 	uri strip_prefix /_next/static
-	root * /app/.next/static
-	header Cache-Control public,max-age=31536000,immutable
+	root * ./.next/static
+	import cors
+	header Cache-Control public,max-age=7200,must-revalidate
 	file_server
 }
 
 route /static/* {
 	uri strip_prefix /static
 	root * /app/public/static
-	header Cache-Control public,max-age=7200,must-revalidate
+	import cors
+	header Cache-Control public,max-age=31536000,immutable
 	file_server
 }
 
