@@ -1,5 +1,5 @@
 #syntax=docker/dockerfile:1.14-labs
-ARG base_image=node:22-alpine
+ARG base_image=node:22-alpine3.21
 
 #
 # Install dependencies
@@ -87,7 +87,11 @@ FROM nextjs_base AS final
 # Add nextjs user
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs && chown nextjs:nodejs /app
 
-RUN apk update && apk add --no-cache bash caddy multirun && rm -rf /var/cache/apk
+RUN \
+  apk update && \
+  apk add --no-cache bash multirun && \
+  apk add --no-cache caddy --repository https://dl-cdn.alpinelinux.org/alpine/edge/community && \
+  rm -rf /var/cache/apk
 
 # For non-standalone builds
 # COPY --chown=nextjs:nodejs --from=deps /app/node_modules ./node_modules
