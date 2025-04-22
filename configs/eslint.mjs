@@ -1,6 +1,8 @@
 // @ts-check
 import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
+import reactCompiler from 'eslint-plugin-react-compiler';
+import { globalIgnores } from 'eslint/config';
 import ts from 'typescript-eslint';
 
 /**
@@ -17,8 +19,12 @@ export function getEslintConfig(rootDir) {
 
   const config = ts.config(
     ...compat.extends('next/core-web-vitals', 'next/typescript', 'plugin:storybook/recommended'),
+    [globalIgnores(['**/__generated__/**'])],
     ...ts.configs.recommendedTypeChecked,
     {
+      plugins: {
+        'react-compiler': reactCompiler,
+      },
       ignores: ['src/common/__generated__/*'],
       rules: {
         'no-unused-vars': 'off',
@@ -35,6 +41,7 @@ export function getEslintConfig(rootDir) {
         ],
         '@typescript-eslint/consistent-type-imports': 'warn',
         '@typescript-eslint/no-require-imports': 'off',
+        'react-compiler/react-compiler': 'error',
       },
       languageOptions: {
         parserOptions: {
