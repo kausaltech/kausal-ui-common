@@ -57,7 +57,7 @@ export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
     autoInstrumentMiddleware: false,
     autoInstrumentServerFunctions: false,
     sourcemaps: {
-      disable: !uploadEnabled,
+      deleteSourcemapsAfterUpload: false,
     },
     release: {
       create: uploadEnabled,
