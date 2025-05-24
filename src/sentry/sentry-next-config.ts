@@ -66,18 +66,19 @@ export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
   return withSentryConfig(configIn, sentryConfig);
 }
 
-export function getSentryWebpackDefines(isServer: boolean): Record<string, string> {
-  if (isServer) return {};
+export function getSentryWebpackDefines(stringify: boolean = true): Record<string, string> {
+  const defines: Record<string, string> = {};
+  function setIfDefined(key: string, value: string | undefined) {
+    if (!value) return;
+    defines[`process.env.${key}`] = stringify ? JSON.stringify(value) : value;
+  }
   const sentryDsnPlaceholder = process.env.SENTRY_DSN_PLACEHOLDER;
   const sentryDsn = process.env.SENTRY_DSN;
   const spotlightUrl = getSpotlightUrl();
-  return {
-    'process.env.SENTRY_DSN': JSON.stringify(sentryDsnPlaceholder ?? sentryDsn ?? null),
-    'process.env.SENTRY_DEBUG': JSON.stringify(sentryDebug ? '1' : '0'),
-    'process.env.SENTRY_SPOTLIGHT': spotlightUrl ? JSON.stringify(spotlightUrl) : '0',
-    'process.env.OTEL_DEBUG': JSON.stringify(envToBool(process.env.OTEL_DEBUG, false) ? '1' : '0'),
-    'process.env.SENTRY_SESSION_REPLAYS': JSON.stringify(
-      envToBool(process.env.SENTRY_SESSION_REPLAYS, false) ? '1' : '0'
-    ),
-  };
+  setIfDefined('SENTRY_DSN', sentryDsnPlaceholder ?? sentryDsn);
+  setIfDefined('SENTRY_DEBUG', sentryDebug ? '1' : '0');
+  setIfDefined('SENTRY_SPOTLIGHT', spotlightUrl ? spotlightUrl : '0');
+  setIfDefined('OTEL_DEBUG', envToBool(process.env.OTEL_DEBUG, false) ? '1' : '0');
+  setIfDefined('SENTRY_SESSION_REPLAYS', envToBool(process.env.SENTRY_SESSION_REPLAYS, false) ? '1' : '0');
+  return defines;
 }

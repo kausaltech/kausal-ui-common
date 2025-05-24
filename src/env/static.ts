@@ -3,10 +3,10 @@ export const isLocal = process.env.NODE_ENV === 'development';
 export const isEdgeRuntime = isServer && process.env.NEXT_RUNTIME === 'edge';
 export const isNodeRuntime = isServer && process.env.NEXT_RUNTIME === 'nodejs';
 
-export type ProjectId = 'watch-ui' | 'paths-ui';
-export type ProductId = 'watch' | 'paths';
+export type ProjectId = 'watch-ui' | 'paths-ui' | 'data-studio';
+export type ProductId = 'watch' | 'paths' | 'data-studio';
 
-const KNOWN_PROJECTS = ['watch-ui', 'paths-ui'];
+const KNOWN_PROJECTS = ['watch-ui', 'paths-ui', 'data-studio'];
 
 let projectId: ProjectId;
 

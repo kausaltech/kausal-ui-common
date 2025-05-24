@@ -1,9 +1,10 @@
 import type { Level, LoggerOptions, WriteFn } from 'pino';
 import type { LogRecord } from './logger';
-import type { ChalkInstance as CI } from 'chalk';
 import type chalkModule from 'chalk';
 import stringify from 'fast-safe-stringify';
 import dayjs from 'dayjs';
+
+type CI = chalkModule.Chalk
 
 type LogFunc = (...args: unknown[]) => void;
 
@@ -23,7 +24,6 @@ export type MessageStyles = {
 }
 
 let messageStyles: MessageStyles;
-
 
 export function setupStyleMapping(chalk: typeof chalkModule) {
   loggerFuncMap = {
@@ -151,9 +151,9 @@ const write: WriteFn = (obj: LogRecord) => {
 };
 
 
-export async function setupBrowserLogging(options: LoggerOptions) {
-  const chalk = await import('chalk');
-  setupStyleMapping(chalk.default);
+export function setupBrowserLogging(options: LoggerOptions) {
+  const chalk = require('chalk') as typeof chalkModule;
+  setupStyleMapping(chalk);
   options.browser = {
     formatters: {
       level: options.formatters!.level,
@@ -162,7 +162,7 @@ export async function setupBrowserLogging(options: LoggerOptions) {
   };
 }
 
-export async function setupEdgeLogging(options: LoggerOptions) {
+export function setupEdgeLogging(options: LoggerOptions) {
   // We need to pretend to be a browser to get colors
   globalThis.navigator = {
     // @ts-expect-error userAgentData is not in the type
@@ -172,13 +172,8 @@ export async function setupEdgeLogging(options: LoggerOptions) {
       ]
     }
   }
-  const chalk = await import('chalk');
-  /*
-  const chalk = require('chalk') as {
-    default: typeof chalkModule;
-  };
-  */
-  setupStyleMapping(chalk.default);
+  const chalk = require('chalk') as typeof chalkModule;
+  setupStyleMapping(chalk);
   options.browser = {
     formatters: {
       level: options.formatters!.level,

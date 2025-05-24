@@ -1,7 +1,7 @@
-import { getLogger, isPrettyLogger } from '../logging';
 import { coerceToBool, envToBool } from './utils';
 import { getProjectId } from './static';
-
+import type { Metadata } from 'next';
+import type * as LoggingModule from '../logging';
 const isServer = typeof window === 'undefined';
 const isLocal = process.env.NODE_ENV === 'development';
 
@@ -66,8 +66,14 @@ function env(key: string) {
   if (!Object.hasOwn(PUBLIC_ENV_VARS, key)) {
     throw new Error(`Unknown public environment variable: ${key}`);
   }
-  const env = window[WINDOW_PUBLIC_ENV_KEY] as Record<string, string>;
-  return env[key];
+  let publicEnv: Record<string, string>;
+  if (!(WINDOW_PUBLIC_ENV_KEY in window)) {
+    publicEnv = readPublicEnvFromMeta();
+    window[WINDOW_PUBLIC_ENV_KEY] = publicEnv;
+  } else {
+    publicEnv = window[WINDOW_PUBLIC_ENV_KEY] as Record<string, string>;
+  }
+  return publicEnv[key];
 }
 
 export function getDeploymentType(): DeploymentType {
@@ -214,14 +220,45 @@ export function getPublicEnv() {
   return Object.fromEntries(keyVals) as Record<string, string>;
 }
 
+export function getPublicEnvAsMeta() {
+  return {
+    other: {
+      env: Object.entries(getPublicEnv()).map(
+        ([name, value]) => `${name}=${value}`
+      ),
+    },
+  } satisfies Metadata;
+};
+
+export function readPublicEnvFromMeta() {
+  const envNodes = document.querySelectorAll<HTMLMetaElement>('meta[name=env]');
+
+  if (!envNodes.length) {
+    return {};
+  }
+
+  return [...envNodes].reduce((envVars, envVar) => {
+    const [key, value] = envVar.content.split('=');
+
+    if (!PUBLIC_ENV_VARS[key] || !value) {
+      return envVars;
+    }
+
+    return { ...envVars, [key]: value };
+  }, {} as Record<string, string>);
+}
+
+
 export function printRuntimeConfig(appName: string) {
+  const logging = require('../logging') as typeof LoggingModule;
+  const { isPrettyLogger, getLogger } = logging;
   const runtimeConfig = getRuntimeConfig();
   if (!isPrettyLogger()) {
     const logger = getLogger();
     logger.info({ runtimeConfig }, `${appName} starting`);
     return;
   }
-  const p = (s: string) => (s + ':').padEnd(22);
+  const p = (s: string) => (s + ':').padEnd(25);
   console.log(`${appName} (build ${runtimeConfig.buildId}) starting\n`);
   console.log(p('🌐 Node environment'), process.env.NODE_ENV);
   console.log(p('🚀 Deployment type'), runtimeConfig.deploymentType);

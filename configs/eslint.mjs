@@ -18,7 +18,7 @@ export function getEslintConfig(rootDir) {
   });
 
   const config = ts.config(
-    ...compat.extends('next/core-web-vitals', 'next/typescript', 'plugin:storybook/recommended'),
+    ...compat.extends('next/core-web-vitals', 'next/typescript'),
     [globalIgnores(['**/__generated__/**'])],
     ...ts.configs.recommendedTypeChecked,
     {

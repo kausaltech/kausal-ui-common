@@ -1,13 +1,18 @@
 import { REQUEST_CORRELATION_ID_HEADER } from '../constants/headers.mjs';
 import { customAlphabet } from 'nanoid';
 import type { IncomingHttpHeaders } from 'node:http';
-import type { Bindings, DestinationStream, Level, Logger, LoggerOptions as PinoLoggerOptions, WriteFn } from 'pino';
-import otel from '@opentelemetry/api';
+import type { Bindings, Level, Logger } from 'pino';
 import { pino } from 'pino';
 import { envToBool } from '../env/utils';
 
 
-let rootLogger: Logger;
+export function getRootLogger() {
+  return globalThis['__kausal_root_logger__'] as Logger | undefined;
+}
+
+export function setRootLogger(logger: Logger) {
+  globalThis['__kausal_root_logger__'] = logger;
+}
 
 export type LogRecord = {
   runtime: 'edge' | 'nodejs' | 'browser';
@@ -21,117 +26,10 @@ export type LogRecord = {
   [key: string]: unknown;
 };
 
-function setupEdgeLoggingJson(options: PinoLoggerOptions) {
-  const write: WriteFn = (obj: LogRecord) => {
-    const { time, level, ...rest } = obj;
-    const rec = {
-      level,
-      time: new Date(time).toISOString(),
-      ...rest,
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const logFunc = console[level] || console.log;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      logFunc(JSON.stringify(rec));
-    } catch (err) {
-      if (err instanceof Error) {
-        // Without a `replacer` argument, stringify on Error results in `{}`
-        console.log(JSON.stringify(err, ['name', 'message', 'stack']));
-      } else {
-        console.log(JSON.stringify({ message: 'Unknown error type' }));
-      }
-    }
-  };
-  options.browser = {
-    formatters: {
-      level: options.formatters!.level,
-    },
-    write,
-  };
-}
-
 export function isPrettyLogger() {
   if (process.env.NODE_ENV === 'production') return false;
   if (envToBool(process.env.KUBERNETES_LOGGING, false)) return false;
   return true;
-}
-
-function getGlobalContext() {
-  return {
-    runtime: typeof window !== 'undefined' ? 'browser' : process.env.NEXT_RUNTIME,
-  };
-}
-
-function getSpanContext() {
-  const span = otel.trace.getActiveSpan();
-  if (!span) return {};
-  return {
-    [LOGGER_TRACE_ID]: span.spanContext().traceId,
-    [LOGGER_SPAN_ID]: span.spanContext().spanId,
-  };
-}
-
-function addDynamicGlobalAttributes(_mergeObject: object, _level: number, logger: pino.Logger) {
-  const attrs = {
-    ...(!logger['noSpan'] ? getSpanContext(): {}),
-  }
-  return attrs;
-}
-
-export async function initRootLogger() {
-  if (rootLogger) {
-    return rootLogger;
-  }
-  const isProd = (process.env.NODE_ENV || 'development') == 'production';
-  const logLevel = process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
-  const options: PinoLoggerOptions = {
-    level: logLevel,
-    formatters: {},
-    mixin: addDynamicGlobalAttributes,
-    mixinMergeStrategy(mergeObject, mixinObject) {
-      const out = { ...mixinObject, ...mergeObject };
-      return out;
-    },
-  };
-  options.formatters!.level = (label, _number) => ({ level: label });
-
-  const prodLogging = !isPrettyLogger();
-  let stream: DestinationStream | undefined;
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
-    if (prodLogging) {
-      // Default options are fine.
-      options.timestamp = () => `,"time":"${new Date(Date.now()).toISOString()}"`;
-    } else {
-      const { setupNodeLogging } = await import('./pretty-node-logger');
-      stream = await setupNodeLogging(options);
-    }
-  } else if (process.env.NEXT_RUNTIME === 'edge') {
-    if (prodLogging) {
-      setupEdgeLoggingJson(options);
-    } else {
-      const { setupEdgeLogging } = await import('./chalk-logger');
-      await setupEdgeLogging(options);
-    }
-  } else if (typeof window !== 'undefined') {
-    if (prodLogging) {
-      options.browser = {
-        write: () => void 0,
-      };
-    } else {
-      const { setupBrowserLogging } = await import('./chalk-logger');
-      await setupBrowserLogging(options);
-      options.browser!.formatters!.log = (object) => {
-        const attrs = getSpanContext();
-        return {
-          ...attrs,
-          ...object,
-        };
-      }
-    }
-  }
-  rootLogger = pino(options, stream).child(getGlobalContext());
-  return rootLogger;
 }
 
 function getSimpleLogger() {
@@ -146,8 +44,6 @@ function getSimpleLogger() {
 }
 
 export const LOGGER_CORRELATION_ID = 'request-id';
-export const LOGGER_TRACE_ID = 'trace-id';
-export const LOGGER_SPAN_ID = 'span-id';
 
 type LoggerRequest = {
   headers: IncomingHttpHeaders | Headers;
@@ -175,6 +71,7 @@ export function getLogger(optsOrName?: LoggerOptions | string, bindings?: Bindin
   }
 
   if (!opts.parent) {
+    const rootLogger = getRootLogger();
     if (!rootLogger) {
       parent = getSimpleLogger();
     } else {
@@ -226,14 +123,6 @@ export function getLogger(optsOrName?: LoggerOptions | string, bindings?: Bindin
   }
 
   return parent;
-};
-
-export const getLoggerAsync = async (opts?: LoggerOptions) => {
-  const parent = opts?.parent;
-  if (!parent) {
-    await initRootLogger();
-  }
-  return getLogger(opts);
 };
 
 const ID_ALPHABET = '346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz';

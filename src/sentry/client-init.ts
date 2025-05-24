@@ -6,7 +6,7 @@ import { API_SENTRY_TUNNEL_PATH, FAKE_SENTRY_DSN, GRAPHQL_CLIENT_PROXY_PATH } fr
 import { getSpotlightUrl, getSentryTraceSampleRate, getWatchBackendUrl, getPathsBackendUrl, getAssetPrefix, getDeploymentType, getSentryRelease } from '@common/env/runtime';
 import { envToBool } from '@common/env/utils';
 import type { SentrySpan } from '@sentry/core';
-import { initRootLogger, getLogger } from '@common/logging/logger';
+import { getLogger } from '@common/logging/logger';
 import type { Logger } from 'pino';
 import { isLocal } from '@common/env';
 
@@ -36,11 +36,7 @@ let logger: Logger | undefined;
 export function initSentryBrowser() {
   const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
 
-  initRootLogger()
-    .then(() => {
-      logger = getLogger('sentry');
-    })
-    .catch(() => void 0);
+  logger = getLogger('sentry');
 
   const spotlightUrl = getSpotlightUrl();
   const tracePropagationTargets: BrowserOptions['tracePropagationTargets'] = [/\/.*/]
