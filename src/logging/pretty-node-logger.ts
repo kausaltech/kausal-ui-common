@@ -1,12 +1,12 @@
 import type { LoggerOptions as PinoLoggerOptions, DestinationStream } from 'pino';
-import pinoPretty from 'pino-pretty';
+import type * as PinoPretty from 'pino-pretty';
 import { formatMessage, setupStyleMapping } from './chalk-logger';
 import stringify from 'fast-safe-stringify';
 import chalk from 'chalk';
 import type { LogRecord } from './logger';
 
-// eslint-disable-next-line @typescript-eslint/require-await
-export async function setupNodeLogging(_options: PinoLoggerOptions): Promise<DestinationStream> {
+export function setupNodeLogging(_options: PinoLoggerOptions): DestinationStream {
+  const pinoPretty = (require('pino-pretty') as typeof PinoPretty).default;
   setupStyleMapping(chalk);
   return pinoPretty({
     colorize: false,

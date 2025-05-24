@@ -9,7 +9,7 @@ import type { StartSpanOptions } from '@sentry/core';
 import { Kind, type OperationDefinitionNode } from 'graphql';
 import type { Bindings } from 'pino';
 
-import { isLocal, isProductionDeployment, isServer } from '@common/env';
+import { isLocalDev, isProductionDeployment, isServer } from '@common/env';
 import { generateCorrelationID, getLogger } from '@common/logging';
 import { logApolloError } from '@common/logging/apollo';
 
@@ -51,7 +51,7 @@ const logOperation = new ApolloLink((operation, forward: NextLink) => {
       duration: durationMs,
     };
     const durationStr = durationMs != null ? `(took ${durationMs} ms)` : `<unknown duration>`;
-    if (isLocal) {
+    if (isLocalDev) {
       logContext.responseLength = JSON.stringify(data).length;
     }
     const nrErrors = data.errors?.length;

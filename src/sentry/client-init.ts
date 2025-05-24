@@ -6,9 +6,9 @@ import { API_SENTRY_TUNNEL_PATH, FAKE_SENTRY_DSN, GRAPHQL_CLIENT_PROXY_PATH } fr
 import { getSpotlightUrl, getSentryTraceSampleRate, getWatchBackendUrl, getPathsBackendUrl, getAssetPrefix, getDeploymentType, getSentryRelease } from '@common/env/runtime';
 import { envToBool } from '@common/env/utils';
 import type { SentrySpan } from '@sentry/core';
-import { initRootLogger, getLogger } from '@common/logging/logger';
+import { getLogger } from '@common/logging/logger';
 import type { Logger } from 'pino';
-import { isLocal } from '@common/env';
+import { isLocalDev } from '@common/env';
 
 function makeNullTransport(_options: BaseTransportOptions) {
   return Sentry.createTransport(
@@ -36,11 +36,7 @@ let logger: Logger | undefined;
 export function initSentryBrowser() {
   const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
 
-  initRootLogger()
-    .then(() => {
-      logger = getLogger('sentry');
-    })
-    .catch(() => void 0);
+  logger = getLogger('sentry');
 
   const spotlightUrl = getSpotlightUrl();
   const tracePropagationTargets: BrowserOptions['tracePropagationTargets'] = [/\/.*/]
@@ -76,7 +72,7 @@ export function initSentryBrowser() {
     transport: envDsn ? undefined : makeNullTransport,
     integrations(integrations) {
       integrations = integrations.filter((integration) => ![Sentry.browserTracingIntegration.name, Sentry.breadcrumbsIntegration.name].includes(integration.name));
-      const breadcrumbOpts = isLocal ? {console: false} : {};
+      const breadcrumbOpts = isLocalDev ? {console: false} : {};
       integrations.push(
         Sentry.breadcrumbsIntegration(breadcrumbOpts)
       )

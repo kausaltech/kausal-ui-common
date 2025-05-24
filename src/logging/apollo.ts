@@ -5,7 +5,7 @@ import type { Bindings, Logger } from 'pino';
 
 import type { ApolloClientType, DefaultApolloContext } from '@common/apollo/index.js';
 import { getLogger } from './logger';
-import { isLocal } from '@common/env/static';
+import { isLocalDev } from '@common/env/static';
 import type { ErrorResponse } from '@apollo/client/link/error';
 
 const LOG_MAX_ERRORS = 3;
@@ -57,7 +57,7 @@ export function logApolloError(error: ApolloErrorLike, options?: ApolloErrorCont
       logCtx.http_status = networkError.statusCode;
     }
     // If the error is a network error, log it as such; nothing else needs to be logged
-    if (isLocal) {
+    if (isLocalDev) {
       logger.error(`❌ Network error: ${networkError.message}`);
     } else {
       logger.error(`Network error: ${networkError.message}`);

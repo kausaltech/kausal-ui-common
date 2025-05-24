@@ -10,7 +10,7 @@ import type { Logger } from 'pino';
 import { API_SENTRY_TUNNEL_PATH, FAKE_SENTRY_DSN, GRAPHQL_CLIENT_PROXY_PATH, HEALTH_CHECK_PUBLIC_PATH, SENTRY_TUNNEL_PUBLIC_PATH } from '@common/constants/routes.mjs';
 import { getPathsGraphQLUrl, getRuntimeConfig, getSentryRelease, getSentryTraceSampleRate, getSpotlightUrl, getWatchGraphQLUrl } from '@common/env';
 import { envToBool } from '@common/env/utils';
-import { getLogger, initRootLogger } from '@common/logging/logger';
+import { getLogger } from '@common/logging/logger';
 import { ensureTrailingSlash } from '@common/utils';
 
 
@@ -19,8 +19,10 @@ const IGNORE_PATHS = [
   HEALTH_CHECK_PUBLIC_PATH,
   API_SENTRY_TUNNEL_PATH,
   '/__nextjs_original-stack-frame',
+  '/__nextjs_source-map',
+  '/icon.png',
 ];
-const IGNORE_PREFIXES = ['/static', '/_next', '/public'].map(ensureTrailingSlash);
+const IGNORE_PREFIXES = ['/static', '/_next', '/public', '/images', '/fonts'].map(ensureTrailingSlash);
 
 let logger: Logger;
 
@@ -78,7 +80,7 @@ function makeNullTransport(options: BaseTransportOptions) {
     {
       recordDroppedEvent: () => {},
     },
-    () => {
+    (_request) => {
       return Promise.resolve({});
     }
   );
@@ -287,13 +289,13 @@ function getEdgeOptions() {
   } satisfies EdgeOptions;
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function initSentry(): Promise<Client | undefined> {
-  await initRootLogger();
-  logger = getLogger('sentry');
   if (process.env.NEXT_RUNTIME === 'edge') {
     Sentry.init(getEdgeOptions());
   } else {
     Sentry.init(getNodeOptions());
   }
+  logger = getLogger('sentry');
   return Sentry.getClient();
 }

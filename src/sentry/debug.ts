@@ -1,50 +1,30 @@
 import type { Context, TextMapGetter, TextMapSetter } from '@opentelemetry/api';
 import { SpanKind } from '@opentelemetry/api';
-import type { Span } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
-import { SamplingDecision, type SamplingResult } from '@opentelemetry/sdk-trace-base';
-import type { ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { ATTR_URL_FULL, SEMATTRS_HTTP_TARGET, SEMATTRS_HTTP_URL } from '@opentelemetry/semantic-conventions';
-import { spanToJSON } from '@sentry/nextjs';
-import { SentryPropagator, SentrySampler } from '@sentry/opentelemetry';
+import { SamplingDecision, type SamplingResult, type Span } from '@opentelemetry/sdk-trace-base';
+import type { ReadableSpan, } from '@opentelemetry/sdk-trace-base';
+import {
+  ATTR_URL_FULL,
+  SEMATTRS_HTTP_TARGET,
+  SEMATTRS_HTTP_URL,
+} from '@opentelemetry/semantic-conventions';
 import type { Client, SpanAttributes } from '@sentry/core';
+import { spanToJSON } from '@sentry/nextjs';
+import { SentryPropagator, SentrySampler, SentrySpanProcessor } from '@sentry/opentelemetry';
 import type { CSPair } from 'ansi-styles';
 import styles from 'ansi-styles';
 import type { Logger } from 'pino';
 
 import { getLogger as getUpstreamLogger } from '@common/logging';
-import { isPrettyLogger } from '@common/logging/logger';
-
+import { getIdentifierColor, isPrettyLogger } from '@common/logging/logger';
 
 function getLogger(name: string) {
   const logger = getUpstreamLogger({ name, noSpan: true });
   return logger;
 }
 
-const PALETTE = [
-  '#db5f57',
-  '#dbc257',
-  '#91db57',
-  '#57db80',
-  '#57d3db',
-  '#5770db',
-  '#a157db',
-  '#db57b2',
-];
-
-function simpleHash(s: string): number {
-  let val = 0;
-  for (const char of s) {
-    val = (val << 5) - val + char.charCodeAt(0);
-    val |= 0;
-  }
-  return val >>> 0;
-}
-
 function randomColor(s: string): CSPair {
-  const hash = simpleHash(s);
-  const hexColor = PALETTE[hash % PALETTE.length];
-  const color = styles.color.ansi16m.hex(hexColor);
+  const color = styles.color.ansi16m.hex(getIdentifierColor(s));
   return {
     open: color,
     close: styles.color.close,
@@ -130,9 +110,7 @@ export class DebugSampler extends SentrySampler {
   ): SamplingResult {
     const eventName = `${withColor('shouldSample', styles.magenta)}`;
     const logBase = `${traceIdColored(traceId)} ${spanNameColored(spanName)}`;
-    this.logger.info(
-      {...attributes}, `${logBase} ${spanKindToName(spanKind)} ${eventName}`
-    );
+    this.logger.info({ ...attributes }, `${logBase} ${spanKindToName(spanKind)} ${eventName}`);
     const ret = super.shouldSample(context, traceId, spanName, spanKind, attributes, _links);
     const traceState = ret.traceState?.serialize() || 'none';
     const decisionAttributes = ret.attributes ? JSON.stringify(ret.attributes) : 'none';
@@ -142,28 +120,29 @@ export class DebugSampler extends SentrySampler {
     return ret;
   }
 }
-export class DebugSpanProcessor implements SpanProcessor {
+export class DebugSentrySpanProcessor extends SentrySpanProcessor {
   private readonly logger: Logger;
 
-  constructor() {
+  constructor(options?: { timeout?: number }) {
+    super(options);
     this.logger = getLogger('span-processor');
   }
-  forceFlush(): Promise<void> {
-    return Promise.resolve();
-  }
   onStart(span_: Span, _parentContext: Context): void {
+    super.onStart(span_, _parentContext);
     const span = span_ as unknown as ReadableSpan;
+    const parentAttrs = {};
+    if ('parentSpanId' in span && span.parentSpanId) {
+      parentAttrs['span.parent'] = `${span.parentSpanId}`;
+    }
     this.logger.info(
-      {recording: span_.isRecording(), ...span.attributes}, `${spanColored(span)} ${withColor('onStart', styles.greenBright)} ${spanKindToName(span.kind)}`
+      { recording: span_.isRecording(), ...span.attributes, ...parentAttrs },
+      `${spanColored(span)} ${withColor('onStart', styles.greenBright)} ${spanKindToName(span.kind)}`
     );
+    super.onStart(span_, _parentContext);
   }
-  onEnd(span: ReadableSpan): void {
-    this.logger.info(
-      `${spanColored(span)} ${withColor('onEnd', styles.green)}`
-    );
-  }
-  shutdown(): Promise<void> {
-    return Promise.resolve();
+  onEnd(span: Span & ReadableSpan): void {
+    this.logger.info(`${spanColored(span)} ${withColor('onEnd', styles.green)}`);
+    super.onEnd(span);
   }
 }
 
@@ -173,7 +152,8 @@ function getCurrentURL(span: Span): string | undefined {
   const data = spanToJSON(span).data;
   // `ATTR_URL_FULL` is the new attribute, but we still support the old one, `SEMATTRS_HTTP_URL`, for now.
   if (data) {
-    const urlAttribute = data[SEMATTRS_HTTP_URL] || data[ATTR_URL_FULL] || data[SEMATTRS_HTTP_TARGET];
+    const urlAttribute =
+      data[SEMATTRS_HTTP_URL] || data[ATTR_URL_FULL] || data[SEMATTRS_HTTP_TARGET];
     if (urlAttribute) return urlAttribute as string;
   }
   // Also look at the traceState, which we may set in the sampler even for unsampled spans
@@ -196,7 +176,8 @@ export class DebugPropagator extends SentryPropagator {
     const activeSpan = trace.getSpan(context);
     const url = activeSpan && getCurrentURL(activeSpan);
     this.logger.info(
-      {url}, `${spanColored(activeSpan as unknown as ReadableSpan)} ${withColor('inject', styles.cyan)} ${
+      { url },
+      `${spanColored(activeSpan as unknown as ReadableSpan)} ${withColor('inject', styles.cyan)} ${
         url ? `url: ${url}` : ''
       }`
     );
