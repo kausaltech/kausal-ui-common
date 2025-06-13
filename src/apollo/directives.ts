@@ -1,5 +1,5 @@
-import type { ArgumentNode, DirectiveNode, VariableDefinitionNode } from "graphql/language";
-import { Kind } from "graphql/language";
+import type { ArgumentNode, DirectiveNode, VariableDefinitionNode } from 'graphql/language';
+import { Kind } from 'graphql/language';
 
 export type DirectiveArg = {
   name: string;
@@ -12,12 +12,12 @@ export type DirectiveArg = {
 type DirectiveDefinition = {
   name: string;
   args: DirectiveArg[];
-}
+};
 
 type DirectiveOutput = {
   variableDefinitions: VariableDefinitionNode[];
   directive: DirectiveNode;
-}
+};
 
 export function createOperationDirective(def: DirectiveDefinition): DirectiveOutput {
   const variableDefinitions: VariableDefinitionNode[] = [];

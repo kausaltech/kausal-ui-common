@@ -1,8 +1,9 @@
-import type { LoggerOptions as PinoLoggerOptions, DestinationStream } from 'pino';
-import type * as PinoPretty from 'pino-pretty';
-import { formatMessage, setupStyleMapping } from './chalk-logger';
-import stringify from 'fast-safe-stringify';
 import chalk from 'chalk';
+import stringify from 'fast-safe-stringify';
+import type { DestinationStream, LoggerOptions as PinoLoggerOptions } from 'pino';
+import type * as PinoPretty from 'pino-pretty';
+
+import { formatMessage, setupStyleMapping } from './chalk-logger';
 import type { LogRecord } from './logger';
 
 export function setupNodeLogging(_options: PinoLoggerOptions): DestinationStream {

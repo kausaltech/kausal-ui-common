@@ -1,18 +1,38 @@
 import { context, propagation } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
 import { serializeEnvelope } from '@sentry/core';
+import type {
+  BaseTransportOptions,
+  Client,
+  Envelope,
+  IntegrationFn,
+  Options,
+  SamplingContext,
+  Span,
+} from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
-import { type EdgeOptions, type NodeOptions, } from '@sentry/nextjs';
+import { type EdgeOptions, type NodeOptions } from '@sentry/nextjs';
 import type { httpIntegration, nativeNodeFetchIntegration } from '@sentry/node';
-import type { BaseTransportOptions, Client, Envelope, IntegrationFn, Options, SamplingContext, Span } from '@sentry/core';
 import type { Logger } from 'pino';
 
-import { API_SENTRY_TUNNEL_PATH, FAKE_SENTRY_DSN, GRAPHQL_CLIENT_PROXY_PATH, HEALTH_CHECK_PUBLIC_PATH, SENTRY_TUNNEL_PUBLIC_PATH } from '@common/constants/routes.mjs';
-import { getPathsGraphQLUrl, getRuntimeConfig, getSentryRelease, getSentryTraceSampleRate, getSpotlightUrl, getWatchGraphQLUrl } from '@common/env';
+import {
+  API_SENTRY_TUNNEL_PATH,
+  FAKE_SENTRY_DSN,
+  GRAPHQL_CLIENT_PROXY_PATH,
+  HEALTH_CHECK_PUBLIC_PATH,
+  SENTRY_TUNNEL_PUBLIC_PATH,
+} from '@common/constants/routes.mjs';
+import {
+  getPathsGraphQLUrl,
+  getRuntimeConfig,
+  getSentryRelease,
+  getSentryTraceSampleRate,
+  getSpotlightUrl,
+  getWatchGraphQLUrl,
+} from '@common/env';
 import { envToBool } from '@common/env/utils';
 import { getLogger } from '@common/logging/logger';
 import { ensureTrailingSlash } from '@common/utils';
-
 
 const IGNORE_PATHS = [
   SENTRY_TUNNEL_PUBLIC_PATH,
@@ -22,7 +42,9 @@ const IGNORE_PATHS = [
   '/__nextjs_source-map',
   '/icon.png',
 ];
-const IGNORE_PREFIXES = ['/static', '/_next', '/public', '/images', '/fonts'].map(ensureTrailingSlash);
+const IGNORE_PREFIXES = ['/static', '/_next', '/public', '/images', '/fonts'].map(
+  ensureTrailingSlash
+);
 
 let logger: Logger;
 
@@ -172,8 +194,9 @@ function getNodeFetchIntegrationOptions(): NodeFetchOptions {
 const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
 
 type HttpIntegrationOptions = Parameters<typeof httpIntegration>[0];
-type HttpInstrumentationOptions = NonNullable<NonNullable<HttpIntegrationOptions>['instrumentation']>['_experimentalConfig'];
-
+type HttpInstrumentationOptions = NonNullable<
+  NonNullable<HttpIntegrationOptions>['instrumentation']
+>['_experimentalConfig'];
 
 export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
   const logger = getLogger('http-instrumentation', { noSpan: true });
@@ -244,7 +267,7 @@ function getNodeOptions() {
   // We require() the Sentry module here to avoid an edge runtime build error.
   const SentryModule = require('@sentry/nextjs') as typeof Sentry;
   const customizedIntegrations = [
-    SentryModule.httpIntegration({spans: false}),
+    SentryModule.httpIntegration({ spans: false }),
     SentryModule.nativeNodeFetchIntegration(getNodeFetchIntegrationOptions()),
   ];
   return {

@@ -1,10 +1,11 @@
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextApiRequest } from 'next/types';
+
 import type { FetchResult } from '@apollo/client';
 import type { Body } from '@apollo/client/link/http/selectHttpOptionsAndBody';
 import { propagation } from '@opentelemetry/api';
 import { captureException, startSpan } from '@sentry/nextjs';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-import type { NextApiRequest } from 'next/types';
 
 import {
   PATHS_INSTANCE_HOSTNAME_HEADER,
@@ -13,8 +14,11 @@ import {
 } from '@common/constants/headers.mjs';
 import { getPathsGraphQLUrl, getWatchGraphQLUrl, isLocalDev } from '@common/env';
 import { getLogger } from '@common/logging/logger';
-
-import { getApiCookies, getClientCookiesFromBackendResponse, type APIType } from '@common/utils/cookies';
+import {
+  type APIType,
+  getApiCookies,
+  getClientCookiesFromBackendResponse,
+} from '@common/utils/cookies';
 
 const PASS_HEADERS = [
   PATHS_INSTANCE_IDENTIFIER_HEADER,
@@ -28,10 +32,7 @@ const PASS_HEADERS = [
 
 function headersFromApiRequest(req: NextApiRequest): Headers {
   const headerList = Object.fromEntries(
-    Object.entries(req.headers).filter(([_, v]) => v !== undefined) as [
-      string,
-      string,
-    ][]
+    Object.entries(req.headers).filter(([_, v]) => v !== undefined) as [string, string][]
   );
   return new Headers(headerList);
 }
@@ -41,12 +42,10 @@ function headersFromApiRequest(req: NextApiRequest): Headers {
  * to prevent CORS issues and attach auth headers.
  */
 export default async function proxyGraphQLRequest(
-  req: NextApiRequest | NextRequest, apiType: APIType
+  req: NextApiRequest | NextRequest,
+  apiType: APIType
 ): Promise<NextResponse> {
-  const incomingHeaders =
-    req instanceof Request
-      ? req.headers
-      : headersFromApiRequest(req);
+  const incomingHeaders = req instanceof Request ? req.headers : headersFromApiRequest(req);
   const logger = getLogger({
     name: 'graphql-proxy',
     request: req,
@@ -89,15 +88,18 @@ export default async function proxyGraphQLRequest(
     backendHeaders['X-Original-User-Agent'] = incomingHeaders.get('user-agent')!;
   }
 
-  logger.info({ "user-agent": incomingHeaders.get('user-agent') }, `Proxying GraphQL request ${operationName}`);
+  logger.info(
+    { 'user-agent': incomingHeaders.get('user-agent') },
+    `Proxying GraphQL request ${operationName}`
+  );
 
   backendHeaders['Content-Type'] = 'application/json';
   const backendCookies = getApiCookies(incomingHeaders, apiType);
   if (backendCookies.length) {
     backendHeaders['Cookie'] = backendCookies.join('; ');
   }
-  const forwarded = incomingHeaders.get("x-forwarded-for")
-  const remoteIp = forwarded ? forwarded.split(/, /)[0] : ''
+  const forwarded = incomingHeaders.get('x-forwarded-for');
+  const remoteIp = forwarded ? forwarded.split(/, /)[0] : '';
   if (remoteIp) {
     backendHeaders['X-Forwarded-For'] = remoteIp;
   }
@@ -109,16 +111,13 @@ export default async function proxyGraphQLRequest(
 
   const url = apiType === 'watch' ? getWatchGraphQLUrl() : getPathsGraphQLUrl();
   // Do the fetch from the backend
-  const backendResponse = await startSpan(
-    { op: 'graphql.request', name: operationName },
-    () => {
-      return fetch(url, {
-        method: 'POST',
-        headers: backendHeaders,
-        body: JSON.stringify(incomingRequest),
-      });
-    }
-  );
+  const backendResponse = await startSpan({ op: 'graphql.request', name: operationName }, () => {
+    return fetch(url, {
+      method: 'POST',
+      headers: backendHeaders,
+      body: JSON.stringify(incomingRequest),
+    });
+  });
 
   // Set response headers
   const responseHeaders: [string, string][] = [];
@@ -164,12 +163,15 @@ export default async function proxyGraphQLRequest(
   } catch (error) {
     // An error occurred parsing the error response as JSON
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({
-      errors: [{ message: `Response is invalid JSON: ${message}` }],
-    }, {
-      status: 500,
-      statusText: 'Internal Server Error',
-      headers: responseHeaders,
-    });
+    return NextResponse.json(
+      {
+        errors: [{ message: `Response is invalid JSON: ${message}` }],
+      },
+      {
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: responseHeaders,
+      }
+    );
   }
 }

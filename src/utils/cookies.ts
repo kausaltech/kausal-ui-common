@@ -1,6 +1,4 @@
 import * as cookie from 'cookie';
-import type { IncomingMessage } from 'http';
-import type { NextApiResponse } from 'next';
 import setCookie from 'set-cookie-parser';
 
 import { getProductId } from '@common/env/static';

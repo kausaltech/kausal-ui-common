@@ -1,14 +1,25 @@
-import * as Sentry from '@sentry/nextjs';
 import type { BaseTransportOptions, SamplingContext } from '@sentry/core';
-import type { BrowserOptions } from '@sentry/nextjs';
-
-import { API_SENTRY_TUNNEL_PATH, FAKE_SENTRY_DSN, GRAPHQL_CLIENT_PROXY_PATH } from '@common/constants/routes.mjs';
-import { getSpotlightUrl, getSentryTraceSampleRate, getWatchBackendUrl, getPathsBackendUrl, getAssetPrefix, getDeploymentType, getSentryRelease } from '@common/env/runtime';
-import { envToBool } from '@common/env/utils';
 import type { SentrySpan } from '@sentry/core';
-import { getLogger } from '@common/logging/logger';
+import * as Sentry from '@sentry/nextjs';
+import type { BrowserOptions } from '@sentry/nextjs';
 import type { Logger } from 'pino';
+
+import {
+  API_SENTRY_TUNNEL_PATH,
+  FAKE_SENTRY_DSN,
+} from '@common/constants/routes.mjs';
 import { isLocalDev } from '@common/env';
+import {
+  getAssetPrefix,
+  getDeploymentType,
+  getPathsBackendUrl,
+  getSentryRelease,
+  getSentryTraceSampleRate,
+  getSpotlightUrl,
+  getWatchBackendUrl,
+} from '@common/env/runtime';
+import { envToBool } from '@common/env/utils';
+import { getLogger } from '@common/logging/logger';
 
 function makeNullTransport(_options: BaseTransportOptions) {
   return Sentry.createTransport(
@@ -39,7 +50,7 @@ export function initSentryBrowser() {
   logger = getLogger('sentry');
 
   const spotlightUrl = getSpotlightUrl();
-  const tracePropagationTargets: BrowserOptions['tracePropagationTargets'] = [/\/.*/]
+  const tracePropagationTargets: BrowserOptions['tracePropagationTargets'] = [/\/.*/];
   if (getWatchBackendUrl()) {
     tracePropagationTargets.push(getWatchBackendUrl());
   }
@@ -47,7 +58,7 @@ export function initSentryBrowser() {
     tracePropagationTargets.push(getPathsBackendUrl());
   }
   const envDsn = process.env.SENTRY_DSN;
-  const dsn = envDsn || (spotlightUrl ? FAKE_SENTRY_DSN : undefined)
+  const dsn = envDsn || (spotlightUrl ? FAKE_SENTRY_DSN : undefined);
   const config: BrowserOptions = {
     environment: getDeploymentType(),
     release: getSentryRelease(),
@@ -59,7 +70,7 @@ export function initSentryBrowser() {
     parentSpanIsAlwaysRootSpan: false,
     tracesSampler(ctx: SamplingContext) {
       if (otelDebug) {
-        logger?.debug({ctx}, 'tracesSampler');
+        logger?.debug({ ctx }, 'tracesSampler');
       }
       if (ctx.parentSampled !== undefined) return ctx.parentSampled;
       return getSentryTraceSampleRate();
@@ -71,11 +82,14 @@ export function initSentryBrowser() {
     replaysSessionSampleRate: envToBool(process.env.SENTRY_SESSION_REPLAYS, false) ? 1.0 : 0.0,
     transport: envDsn ? undefined : makeNullTransport,
     integrations(integrations) {
-      integrations = integrations.filter((integration) => ![Sentry.browserTracingIntegration.name, Sentry.breadcrumbsIntegration.name].includes(integration.name));
-      const breadcrumbOpts = isLocalDev ? {console: false} : {};
-      integrations.push(
-        Sentry.breadcrumbsIntegration(breadcrumbOpts)
-      )
+      integrations = integrations.filter(
+        (integration) =>
+          ![Sentry.browserTracingIntegration.name, Sentry.breadcrumbsIntegration.name].includes(
+            integration.name
+          )
+      );
+      const breadcrumbOpts = isLocalDev ? { console: false } : {};
+      integrations.push(Sentry.breadcrumbsIntegration(breadcrumbOpts));
       integrations.push(
         Sentry.browserTracingIntegration({
           idleTimeout: 5000,
@@ -88,7 +102,7 @@ export function initSentryBrowser() {
               decision = false;
             }
             if (otelDebug && logger) {
-              logger.info({url, decision}, 'shouldCreateSpanForRequest');
+              logger.info({ url, decision }, 'shouldCreateSpanForRequest');
             }
             return decision;
           },
@@ -98,7 +112,7 @@ export function initSentryBrowser() {
         maskAllText: false,
         maskAllInputs: false,
         blockAllMedia: false,
-      })
+      });
       integrations.push(replay);
       if (process.env.DEPLOYMENT_TYPE !== 'production') {
         integrations.push(
@@ -123,7 +137,10 @@ export function initSentryBrowser() {
       // @ts-expect-error access private
       const { _name } = span;
       const recording = span.isRecording() ? ' recording' : ' non-recording';
-      logger?.info(span, `${event}${event === 'Start' ? recording : ''} span: ${ctx.traceId}:${ctx.spanId} ${_name}`);
+      logger?.info(
+        span,
+        `${event}${event === 'Start' ? recording : ''} span: ${ctx.traceId}:${ctx.spanId} ${_name}`
+      );
     };
     client?.on('spanStart', (span) => {
       // @ts-expect-error access private

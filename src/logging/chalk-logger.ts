@@ -1,10 +1,11 @@
-import type { Level, LoggerOptions, WriteFn } from 'pino';
-import type { LogRecord } from './logger';
 import type chalkModule from 'chalk';
-import stringify from 'fast-safe-stringify';
 import dayjs from 'dayjs';
+import stringify from 'fast-safe-stringify';
+import type { Level, LoggerOptions, WriteFn } from 'pino';
 
-type CI = chalkModule.Chalk
+import type { LogRecord } from './logger';
+
+type CI = chalkModule.Chalk;
 
 type LogFunc = (...args: unknown[]) => void;
 
@@ -21,7 +22,7 @@ export type MessageStyles = {
   booleanValue: CI;
   numberValue: CI;
   objectValue: CI;
-}
+};
 
 let messageStyles: MessageStyles;
 
@@ -61,22 +62,23 @@ export function setupStyleMapping(chalk: typeof chalkModule) {
 }
 
 type ChalkRecord = {
-  runtime: 'edge' | 'nodejs' | 'browser',
-  level: Level,
-  logger?: string,
-  time: Date,
-  message?: string,
-  rest: Record<string, unknown>,
-}
+  runtime: 'edge' | 'nodejs' | 'browser';
+  level: Level;
+  logger?: string;
+  time: Date;
+  message?: string;
+  rest: Record<string, unknown>;
+};
 
 export type FormattedLogRecord = {
-  message: string,
-  rest: Record<string, unknown>,
-}
+  message: string;
+  rest: Record<string, unknown>;
+};
 
 export function formatMessage(record: ChalkRecord) {
   const style = levelStyleMap[record.level] ?? levelStyleMap.unknown;
-  const runtimeStyle = record.runtime === 'edge' ? messageStyles.edgeRuntime : messageStyles.nodejsRuntime;
+  const runtimeStyle =
+    record.runtime === 'edge' ? messageStyles.edgeRuntime : messageStyles.nodejsRuntime;
   let fullMsg = '';
   fullMsg += `${messageStyles.time(dayjs(record.time).format('HH:mm.SSS'))} `;
   fullMsg += `${style(' ' + record.level.toUpperCase().padEnd(6))}`;
@@ -149,7 +151,6 @@ const write: WriteFn = (obj: LogRecord) => {
     console.error(err);
   }
 };
-
 
 export function setupBrowserLogging(options: LoggerOptions) {
   const chalk = require('chalk') as typeof chalkModule;

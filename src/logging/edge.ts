@@ -1,8 +1,9 @@
 import type { LoggerOptions as PinoLoggerOptions, WriteFn } from 'pino';
 import { pino } from 'pino';
+
 import type * as ChalkLogger from './chalk-logger';
 import { getGlobalContext, getRootLoggerOptions } from './init';
-import { getRootLogger, isPrettyLogger, setRootLogger, type LogRecord } from './logger';
+import { type LogRecord, getRootLogger, isPrettyLogger, setRootLogger } from './logger';
 
 export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
   const write: WriteFn = (obj: LogRecord) => {
@@ -43,8 +44,7 @@ export function initEdgeRootLogger() {
   if (prodLogging) {
     setupEdgeLoggingJson(options);
   } else {
-    const { setupEdgeLogging } =
-      require('./chalk-logger') as typeof ChalkLogger;
+    const { setupEdgeLogging } = require('./chalk-logger') as typeof ChalkLogger;
     setupEdgeLogging(options);
   }
   const logger = pino(options).child(getGlobalContext());

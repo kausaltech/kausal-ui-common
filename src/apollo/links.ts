@@ -4,8 +4,8 @@ import { type ErrorResponse, onError } from '@apollo/client/link/error';
 import * as otelApi from '@opentelemetry/api';
 import { ATTR_URL_FULL } from '@opentelemetry/semantic-conventions';
 import { SPAN_STATUS_ERROR, SPAN_STATUS_OK } from '@sentry/core';
-import * as Sentry from '@sentry/nextjs';
 import type { StartSpanOptions } from '@sentry/core';
+import * as Sentry from '@sentry/nextjs';
 import { Kind, type OperationDefinitionNode } from 'graphql';
 import type { Bindings } from 'pino';
 
@@ -30,15 +30,14 @@ const logOperation = new ApolloLink((operation, forward: NextLink) => {
   const queryId = generateCorrelationID();
   const ctx = getContext() as DefaultApolloContext;
 
-  const logBindings: Bindings = { 'graphql-operation': operationName, 'graphql-query-id': queryId, };
+  const logBindings: Bindings = { 'graphql-operation': operationName, 'graphql-query-id': queryId };
   if (ctx.traceId && ctx.spanId) {
     logBindings['trace-id'] = ctx.traceId;
     logBindings['span-id'] = ctx.spanId;
   }
-  const opLogger = (ctx.logger ?? getLogger('graphql')).child(
-    logBindings,
-    { level: !isServer && isProductionDeployment() ? 'fatal' : 'info' }
-  );
+  const opLogger = (ctx.logger ?? getLogger('graphql')).child(logBindings, {
+    level: !isServer && isProductionDeployment() ? 'fatal' : 'info',
+  });
 
   setContext({ ...ctx, start: Date.now(), logger: opLogger });
   opLogger.info(`Starting GraphQL request ${operationName}`);

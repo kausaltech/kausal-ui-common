@@ -2,7 +2,7 @@ import type { Context, TextMapGetter, TextMapSetter } from '@opentelemetry/api';
 import { SpanKind } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
 import { SamplingDecision, type SamplingResult, type Span } from '@opentelemetry/sdk-trace-base';
-import type { ReadableSpan, } from '@opentelemetry/sdk-trace-base';
+import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import {
   ATTR_URL_FULL,
   SEMATTRS_HTTP_TARGET,

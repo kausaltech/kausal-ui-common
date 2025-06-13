@@ -1,12 +1,13 @@
 import type { ApolloLink, Operation } from '@apollo/client';
 import type { ApolloError } from '@apollo/client/errors/errors.cjs';
+import type { ErrorResponse } from '@apollo/client/link/error';
 import { HttpLink } from '@apollo/client/link/http/http.cjs';
 import type { Bindings, Logger } from 'pino';
 
 import type { ApolloClientType, DefaultApolloContext } from '@common/apollo/index.js';
-import { getLogger } from './logger';
 import { isLocalDev } from '@common/env/static';
-import type { ErrorResponse } from '@apollo/client/link/error';
+
+import { getLogger } from './logger';
 
 const LOG_MAX_ERRORS = 3;
 

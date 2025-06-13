@@ -1,31 +1,20 @@
-import { DiagConsoleLogger, DiagLogLevel, diag, type Context, type Span } from '@opentelemetry/api';
+import { type Context, DiagConsoleLogger, DiagLogLevel, type Span, diag } from '@opentelemetry/api';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
-import { type SpanProcessor, type ReadableSpan } from '@opentelemetry/sdk-trace-base';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import {
-  ATTR_SERVICE_NAME,
-  ATTR_SERVICE_VERSION,
-} from '@opentelemetry/semantic-conventions';
 //import { resourceFromAttributes } from '@opentelemetry/resources';
 import { Resource } from '@opentelemetry/resources';
+import { type ReadableSpan, type SpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import * as Sentry from '@sentry/node';
 import type { NodeClient } from '@sentry/node';
-import {
-  SentryPropagator,
-  SentrySampler,
-  SentrySpanProcessor,
-} from '@sentry/opentelemetry';
+import { SentryPropagator, SentrySampler, SentrySpanProcessor } from '@sentry/opentelemetry';
 
 import { getBuildId, getProjectId } from '@common/env';
 import { envToBool } from '@common/env/utils';
-import {
-  DebugPropagator,
-  DebugSampler,
-  DebugSentrySpanProcessor,
-} from '@common/sentry/debug';
-import { getHttpInstrumentationOptions } from '@common/sentry/server-init';
 import { initNodeRootLogger } from '@common/logging/node';
+import { DebugPropagator, DebugSampler, DebugSentrySpanProcessor } from '@common/sentry/debug';
+import { getHttpInstrumentationOptions } from '@common/sentry/server-init';
 
 function initDebugLogging() {
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
@@ -36,10 +25,13 @@ export function initNodeLogging() {
 }
 
 class GeneralSpanProcessor implements SpanProcessor {
-  onStart(_span: Span, _parentContext: Context): void {
-  }
+  onStart(_span: Span, _parentContext: Context): void {}
   onEnd(span: ReadableSpan): void {
-    if (span.attributes['sentry.sentry_trace_backfill'] && span.attributes['http.method'] && !span.parentSpanId) {
+    if (
+      span.attributes['sentry.sentry_trace_backfill'] &&
+      span.attributes['http.method'] &&
+      !span.parentSpanId
+    ) {
       delete span.attributes['sentry.sentry_trace_backfill'];
     }
   }
@@ -58,9 +50,7 @@ export async function initTelemetry(sentryClient: NodeClient) {
   if (otelDebugLogging) {
     initDebugLogging();
   }
-  const traceSampler = otelDebug
-    ? new DebugSampler(sentryClient)
-    : new SentrySampler(sentryClient);
+  const traceSampler = otelDebug ? new DebugSampler(sentryClient) : new SentrySampler(sentryClient);
   const propagator = otelDebug ? new DebugPropagator() : new SentryPropagator();
   const processorOpts = {
     timeout: sentryClient.getOptions().maxSpanWaitDuration,
@@ -70,8 +60,8 @@ export async function initTelemetry(sentryClient: NodeClient) {
   if (otelDebug) {
     spanProcessors.push(new DebugSentrySpanProcessor(processorOpts));
   } else {
-      const sentrySpanProcessor = new SentrySpanProcessor(processorOpts);
-      spanProcessors.push(sentrySpanProcessor);
+    const sentrySpanProcessor = new SentrySpanProcessor(processorOpts);
+    spanProcessors.push(sentrySpanProcessor);
   }
   const provider = new NodeTracerProvider({
     // Ensure the correct subset of traces is sent to Sentry

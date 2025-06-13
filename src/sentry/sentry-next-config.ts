@@ -5,14 +5,13 @@ import type { SentryBuildOptions } from '@sentry/nextjs';
 import { secrets } from 'docker-secret';
 import type { NextConfig } from 'next';
 
-import { getSpotlightUrl } from '../env/runtime';
-
 import {
   API_HEALTH_CHECK_PATH,
   API_SENTRY_TUNNEL_PATH,
   HEALTH_CHECK_PUBLIC_PATH,
   SENTRY_TUNNEL_PUBLIC_PATH,
 } from '../constants/routes.mjs';
+import { getSpotlightUrl } from '../env/runtime';
 import { envToBool } from '../env/utils';
 
 const sentryAuthToken = secrets.SENTRY_AUTH_TOKEN || process.env.SENTRY_AUTH_TOKEN;
@@ -79,6 +78,9 @@ export function getSentryWebpackDefines(stringify: boolean = true): Record<strin
   setIfDefined('SENTRY_DEBUG', sentryDebug ? '1' : '0');
   setIfDefined('SENTRY_SPOTLIGHT', spotlightUrl ? spotlightUrl : '0');
   setIfDefined('OTEL_DEBUG', envToBool(process.env.OTEL_DEBUG, false) ? '1' : '0');
-  setIfDefined('SENTRY_SESSION_REPLAYS', envToBool(process.env.SENTRY_SESSION_REPLAYS, false) ? '1' : '0');
+  setIfDefined(
+    'SENTRY_SESSION_REPLAYS',
+    envToBool(process.env.SENTRY_SESSION_REPLAYS, false) ? '1' : '0'
+  );
   return defines;
 }

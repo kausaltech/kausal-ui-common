@@ -22,7 +22,7 @@ const _spotlightIntegration = ((options: Partial<SpotlightConnectionOptions> = {
     // We don't want to send interaction transactions/root spans created from
     // clicks within Spotlight to Sentry. Neither do we want them to be sent to
     // spotlight.
-    processEvent: event => (isSpotlightInteraction(event) ? null : event),
+    processEvent: (event) => (isSpotlightInteraction(event) ? null : event),
     afterAllSetup: (client: Client) => {
       setupSidecarForwarding(client, sidecarUrl);
     },
@@ -34,7 +34,10 @@ function setupSidecarForwarding(client: Client, sidecarUrl: string): void {
 
   client.on('beforeEnvelope', (envelope: Envelope) => {
     if (failCount > 3) {
-      console.warn('[Spotlight] Disabled Sentry -> Spotlight integration due to too many failed requests:', failCount);
+      console.warn(
+        '[Spotlight] Disabled Sentry -> Spotlight integration due to too many failed requests:',
+        failCount
+      );
       return;
     }
 
@@ -46,19 +49,19 @@ function setupSidecarForwarding(client: Client, sidecarUrl: string): void {
       },
       mode: 'cors',
     }).then(
-      res => {
+      (res) => {
         if (res.status >= 200 && res.status < 400) {
           // Reset failed requests counter on success
           failCount = 0;
         }
       },
-      err => {
+      (err) => {
         failCount++;
         console.warn(
           "Sentry SDK can't connect to Sidecar is it running? See: https://spotlightjs.com/sidecar/npx/",
-          err,
+          err
         );
-      },
+      }
     );
   });
 }
@@ -80,6 +83,8 @@ export function isSpotlightInteraction(event: Event): boolean {
       event.contexts &&
       event.contexts.trace &&
       event.contexts.trace.op === 'ui.action.click' &&
-      event.spans.some(({ description }) => description && description.includes('#sentry-spotlight')),
+      event.spans.some(
+        ({ description }) => description && description.includes('#sentry-spotlight')
+      )
   );
 }

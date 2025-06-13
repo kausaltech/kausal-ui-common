@@ -1,5 +1,5 @@
 import otel from '@opentelemetry/api';
-import type { pino, LoggerOptions as PinoLoggerOptions } from 'pino';
+import type { LoggerOptions as PinoLoggerOptions, pino } from 'pino';
 
 export const LOGGER_TRACE_ID = 'trace-id';
 export const LOGGER_SPAN_ID = 'span-id';
@@ -21,8 +21,8 @@ export function getSpanContext() {
 
 function addDynamicGlobalAttributes(_mergeObject: object, _level: number, logger: pino.Logger) {
   const attrs = {
-    ...(!logger['noSpan'] ? getSpanContext(): {}),
-  }
+    ...(!logger['noSpan'] ? getSpanContext() : {}),
+  };
   return attrs;
 }
 

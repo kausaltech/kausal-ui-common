@@ -1,9 +1,9 @@
-import type { FC } from "react";
+import type { FC } from 'react';
 
-import Script from 'next/script';
 import { unstable_noStore as noStore } from 'next/cache';
-import { getPublicEnv, WINDOW_PUBLIC_ENV_KEY } from "./runtime";
+import Script from 'next/script';
 
+import { WINDOW_PUBLIC_ENV_KEY, getPublicEnv } from './runtime';
 
 type EnvScriptProps = {
   nonce?: string;

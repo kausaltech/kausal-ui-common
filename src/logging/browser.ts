@@ -1,7 +1,8 @@
+import { pino } from 'pino';
+
+import type * as ChalkLogger from './chalk-logger';
 import { getGlobalContext, getRootLoggerOptions, getSpanContext } from './init';
 import { getRootLogger, isPrettyLogger, setRootLogger } from './logger';
-import type * as ChalkLogger from './chalk-logger';
-import { pino } from 'pino';
 
 export function initBrowserRootLogger() {
   if (getRootLogger()) {
@@ -28,7 +29,7 @@ export function initBrowserRootLogger() {
         ...attrs,
         ...object,
       };
-    }
+    };
   }
   const logger = pino(options).child(getGlobalContext());
   setRootLogger(logger);

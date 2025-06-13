@@ -30,21 +30,27 @@ type StartInteractionOptions = {
  * @param options - Configuration options for the span
  * @returns The result of the interaction handler function
  */
-export async function startInteraction<T>(handler: () => Promise<T>, options?: StartInteractionOptions) {
+export async function startInteraction<T>(
+  handler: () => Promise<T>,
+  options?: StartInteractionOptions
+) {
   const { name = 'unknown', op, attributes, componentName } = options ?? {};
   const attrs = {
     ...attributes,
     ...(componentName ? { 'react.component': componentName } : {}),
   };
-  return Sentry.startSpanManual({
-    name,
-    op: op ?? 'ui.action',
-    attributes: attrs,
-    parentSpan: null,
-    forceTransaction: true,
-  }, async (span, finish) => {
-    const result = await handler();
-    finish();
-    return result;
-  });
+  return Sentry.startSpanManual(
+    {
+      name,
+      op: op ?? 'ui.action',
+      attributes: attrs,
+      parentSpan: null,
+      forceTransaction: true,
+    },
+    async (span, finish) => {
+      const result = await handler();
+      finish();
+      return result;
+    }
+  );
 }

@@ -17,5 +17,5 @@
     "incremental": true,
     "allowSyntheticDefaultImports": true,
     "verbatimModuleSyntax": true
-  },
+  }
 }

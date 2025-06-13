@@ -1,5 +1,10 @@
-import { FORWARDED_FOR_HEADER, FORWARDED_HOST_HEADER, FORWARDED_PROTO_HEADER } from "@common/constants/headers.mjs";
-import type { IncomingMessage } from "http";
+import type { IncomingMessage } from 'http';
+
+import {
+  FORWARDED_FOR_HEADER,
+  FORWARDED_HOST_HEADER,
+  FORWARDED_PROTO_HEADER,
+} from '@common/constants/headers.mjs';
 
 export function ensureTrailingSlash(path: string) {
   return path.endsWith('/') ? path : `${path}/`;
@@ -32,7 +37,7 @@ export type CurrentURL = {
    * The path of the request (e.g. '/actions').
    */
   path: string;
-}
+};
 
 export function getCurrentURL(req: Request | IncomingMessage) {
   const fwdHost = getHeader(req, FORWARDED_HOST_HEADER);

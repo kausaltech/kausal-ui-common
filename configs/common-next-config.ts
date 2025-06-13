@@ -52,7 +52,7 @@ export function getNextConfig(projectRoot: string, opts: { isPagesRouter?: boole
     webpack: (cfg: Webpack.Configuration, context) => {
       const { isServer, dev } = context;
       const isEdge = isServer && context.nextRuntime === 'edge';
-      const webpack = context.webpack as typeof Webpack;
+      const _webpack = context.webpack as typeof Webpack;
       if (!cfg.resolve || !cfg.resolve.alias || !Array.isArray(cfg.plugins))
         throw new Error('cfg.resolve not defined');
       cfg.resolve.extensionAlias = {

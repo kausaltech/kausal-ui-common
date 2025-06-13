@@ -10,7 +10,6 @@ const KNOWN_PROJECTS = ['watch-ui', 'paths-ui', 'data-studio'];
 
 let projectId: ProjectId;
 
-
 export function getProjectId() {
   if (projectId) return projectId;
   const envProjectId = process.env.PROJECT_ID || '';
