@@ -35,6 +35,7 @@ export const PUBLIC_ENV_VARS: Record<string, keyof RuntimeConfig | undefined> = 
   WILDCARD_DOMAINS: 'wildcardDomains',
   SENTRY_DSN: 'sentryDsn',
   SENTRY_TRACE_SAMPLE_RATE: 'sentryTraceSampleRate',
+  SENTRY_SESSION_REPLAYS: undefined,
   BUILD_ID: 'buildId',
   AUTH_ISSUER: undefined,
 };
@@ -160,12 +161,12 @@ export function getSentryTraceSampleRate(): number {
 
 export function getSentryReplaysSampleRate(): number {
   const debugEnabled = process.env.SENTRY_DEBUG === '1';
-  const replaysEnabled = envToBool(process.env.SENTRY_SESSION_REPLAYS, false);
-  const defaultRate = debugEnabled || replaysEnabled ? 1.0 : 0.0;
+  const replaysEnabled = envToBool(env('SENTRY_SESSION_REPLAYS'), false);
+  const defaultRate = (debugEnabled || replaysEnabled) ? 1.0 : 0.0;
   return defaultRate;
 }
 
-export const logGraphqlQueries = isServer && envToBool('LOG_GRAPHQL_QUERIES', false);
+export const logGraphqlQueries = isServer && envToBool(env('LOG_GRAPHQL_QUERIES'), false);
 
 /**
  * Returns the URL to use for Spotlight, or null if Spotlight is not enabled.
@@ -226,11 +227,11 @@ export function readPublicEnvFromMeta() {
     return {};
   }
 
-  return [...envNodes].reduce(
+  const envKVs = [...envNodes].reduce(
     (envVars, envVar) => {
       const [key, value] = envVar.content.split('=');
 
-      if (!PUBLIC_ENV_VARS[key] || !value) {
+      if (!(key in PUBLIC_ENV_VARS) || !value) {
         return envVars;
       }
 
@@ -238,6 +239,10 @@ export function readPublicEnvFromMeta() {
     },
     {} as Record<string, string>
   );
+  if (isLocalDev) {
+    console.log('Public environment', envKVs);
+  }
+  return envKVs;
 }
 
 export function printRuntimeConfig(appName: string) {

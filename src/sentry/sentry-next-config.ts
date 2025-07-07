@@ -78,9 +78,5 @@ export function getSentryWebpackDefines(stringify: boolean = true): Record<strin
   setIfDefined('SENTRY_DEBUG', sentryDebug ? '1' : '0');
   setIfDefined('SENTRY_SPOTLIGHT', spotlightUrl ? spotlightUrl : '0');
   setIfDefined('OTEL_DEBUG', envToBool(process.env.OTEL_DEBUG, false) ? '1' : '0');
-  setIfDefined(
-    'SENTRY_SESSION_REPLAYS',
-    envToBool(process.env.SENTRY_SESSION_REPLAYS, false) ? '1' : '0'
-  );
   return defines;
 }

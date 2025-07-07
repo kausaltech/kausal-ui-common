@@ -14,6 +14,7 @@ import {
   getDeploymentType,
   getPathsBackendUrl,
   getSentryRelease,
+  getSentryReplaysSampleRate,
   getSentryTraceSampleRate,
   getSpotlightUrl,
   getWatchBackendUrl,
@@ -79,12 +80,12 @@ export function initSentryBrowser() {
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: envToBool(process.env.SENTRY_DEBUG, false),
     replaysOnErrorSampleRate: 1.0,
-    replaysSessionSampleRate: envToBool(process.env.SENTRY_SESSION_REPLAYS, false) ? 1.0 : 0.0,
+    replaysSessionSampleRate: getSentryReplaysSampleRate(),
     transport: envDsn ? undefined : makeNullTransport,
     integrations(integrations) {
       integrations = integrations.filter(
         (integration) =>
-          ![Sentry.browserTracingIntegration.name, Sentry.breadcrumbsIntegration.name].includes(
+          ![Sentry.browserTracingIntegration.name, Sentry.breadcrumbsIntegration.name, Sentry.replayIntegration.name].includes(
             integration.name
           )
       );
@@ -112,6 +113,7 @@ export function initSentryBrowser() {
         maskAllText: false,
         maskAllInputs: false,
         blockAllMedia: false,
+        useCompression: true,
       });
       integrations.push(replay);
       if (process.env.DEPLOYMENT_TYPE !== 'production') {
