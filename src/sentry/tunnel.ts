@@ -1,13 +1,22 @@
-import { getLogger } from '../logging';
+type ForwardOptions = {
+  clientIp?: string;
+  contentType?: string | null;
+  referer?: string | null;
+}
 
 export async function forwardToSentry(
-  envelopeBytes: ArrayBuffer | string,
+  envelopeBytes: ArrayBuffer,
   sentryDsn: URL,
-  clientIp?: string
+  options: ForwardOptions = {}
 ) {
-  const logger = getLogger('sentry-proxy');
-  const envelope =
-    typeof envelopeBytes === 'string' ? envelopeBytes : new TextDecoder().decode(envelopeBytes);
+  const { clientIp, contentType, referer } = options;
+  if (contentType?.toLowerCase().startsWith('text/plain')) {
+    const encoding = contentType.toLowerCase().split(';')[1]?.trim();
+    if (encoding !== 'charset=utf-8') {
+      throw new Error(`Unsupported encoding: ${encoding}`);
+    }
+  }
+  const envelope = new TextDecoder().decode(envelopeBytes);
   const [rawHeader, ...otherPieces] = envelope.split('\n');
   const header = JSON.parse(rawHeader) as object;
   const dsn = new URL(header['dsn'] as string);
@@ -19,18 +28,26 @@ export async function forwardToSentry(
   if (dsn.pathname !== sentryDsn.pathname || !projectId) {
     throw new Error(`Invalid Sentry DSN path: ${dsn.pathname}`);
   }
-
-  if (clientIp) {
-    header['forwarded_for'] = clientIp;
+  let httpBody: string | ArrayBuffer;
+  const httpHeaders: Record<string, string> = {};
+  if (referer) {
+    httpHeaders['referer'] = referer;
   }
-  const body = [JSON.stringify(header), ...otherPieces].join('\n');
+  if (contentType) {
+    if (clientIp) {
+      header['forwarded_for'] = clientIp;
+    }
+    httpHeaders['content-type'] = contentType;
+    httpBody = [JSON.stringify(header), ...otherPieces].join('\n');
+  } else {
+    httpBody = envelopeBytes;
+  }
 
   const sentryEnvelopeURL = `${sentryDsn.protocol}//${sentryDsn.hostname}/api/${projectId}/envelope/`;
   const resp = await fetch(sentryEnvelopeURL, {
     method: 'POST',
-    body,
+    body: httpBody,
+    headers: httpHeaders,
   });
-  if (resp.status !== 200) {
-    logger.error(`Sentry responded with status ${resp.status}`);
-  }
+  return resp;
 }
