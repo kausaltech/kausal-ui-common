@@ -58,6 +58,21 @@ export type LoggerOptions = {
   noSpan?: boolean;
 };
 
+export function userLogContext(user: { id?: string | null, email?: string | null, name?: string | null } | null): Bindings {
+  if (!user) return {};
+  const ctx: Bindings = {};
+  if (user.id) {
+    ctx['user.id'] = user.id;
+  }
+  if (user.email) {
+    ctx['user.email'] = user.email;
+  }
+  if (user.name) {
+    ctx['user.full_name'] = user.name;
+  }
+  return ctx satisfies Bindings;
+}
+
 export function getLogger(opts?: LoggerOptions): Logger;
 export function getLogger(name?: string, bindings?: Bindings, parent?: Logger): Logger;
 
@@ -68,7 +83,7 @@ export function getLogger(
 ): Logger {
   let opts: LoggerOptions;
   if (typeof optsOrName === 'object') {
-    opts = optsOrName;
+    opts = { ...optsOrName };
   } else if (typeof optsOrName === 'string') {
     opts = { name: optsOrName, bindings: bindings, parent: parent };
   } else {
@@ -110,6 +125,7 @@ export function getLogger(
         extraBindings[LOGGER_CORRELATION_ID] = correlationId;
       }
     }
+    delete opts.request;
   }
 
   if (opts.name || opts.bindings || Object.keys(extraBindings).length > 0) {

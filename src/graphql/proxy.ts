@@ -46,9 +46,14 @@ export default async function proxyGraphQLRequest(
   apiType: APIType
 ): Promise<NextResponse> {
   const incomingHeaders = req instanceof Request ? req.headers : headersFromApiRequest(req);
+  const incomingRequest = (req instanceof Request ? await req.json() : req.body) as Body;
+  const operationName = incomingRequest.operationName || '<unknown>';
   const logger = getLogger({
     name: 'graphql-proxy',
     request: req,
+    bindings: {
+      'graphql.operation.name': operationName,
+    },
   });
   if (req.method !== 'POST') {
     return NextResponse.json({ error: 'HTTP method not allowed' }, { status: 405 });
@@ -56,9 +61,6 @@ export default async function proxyGraphQLRequest(
   if (incomingHeaders.get('content-type') !== 'application/json') {
     return NextResponse.json({ error: 'Invalid Content-Type header' }, { status: 415 });
   }
-  const incomingRequest = (req instanceof Request ? await req.json() : req.body) as Body;
-
-  const operationName = incomingRequest.operationName || '<unknown>';
 
   // Determine headers to send to the backend.
   const backendHeaders = {};
@@ -88,6 +90,7 @@ export default async function proxyGraphQLRequest(
     backendHeaders['X-Original-User-Agent'] = incomingHeaders.get('user-agent')!;
   }
 
+  const startedAt = new Date();
   logger.info(
     { 'user-agent': incomingHeaders.get('user-agent') },
     `Proxying GraphQL request ${operationName}`
@@ -104,7 +107,7 @@ export default async function proxyGraphQLRequest(
     backendHeaders['X-Forwarded-For'] = remoteIp;
   }
 
-  if (isLocalDev) {
+  if (isLocalDev && false) {
     logger.info(req.headers, 'Headers from client');
     logger.info(backendHeaders, 'Headers to backend');
   }
@@ -118,6 +121,12 @@ export default async function proxyGraphQLRequest(
       body: JSON.stringify(incomingRequest),
     });
   });
+
+  const duration = new Date().getTime() - startedAt.getTime();
+  logger.info(
+    { 'http.response.duration': duration, 'http.response.status_code': backendResponse.status },
+    `GraphQL request completed in ${duration} ms`
+  );
 
   // Set response headers
   const responseHeaders: [string, string][] = [];

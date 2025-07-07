@@ -30,7 +30,10 @@ const logOperation = new ApolloLink((operation, forward: NextLink) => {
   const queryId = generateCorrelationID();
   const ctx = getContext() as DefaultApolloContext;
 
-  const logBindings: Bindings = { 'graphql-operation': operationName, 'graphql-query-id': queryId };
+  const logBindings: Bindings = {
+    'graphql.operation.name': operationName,
+    'graphql.operation.id': queryId,
+  };
   if (ctx.traceId && ctx.spanId) {
     logBindings['trace-id'] = ctx.traceId;
     logBindings['span-id'] = ctx.spanId;
