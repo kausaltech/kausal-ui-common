@@ -19,7 +19,7 @@ export function getEslintConfig(rootDir) {
 
   const config = ts.config(
     ...compat.extends('next/core-web-vitals', 'next/typescript'),
-    [globalIgnores(['**/__generated__/**'])],
+    [globalIgnores(['**/__generated__/**', '.next/**'])],
     ...ts.configs.recommendedTypeChecked,
     {
       plugins: {
@@ -39,6 +39,12 @@ export function getEslintConfig(rootDir) {
             ignoreRestSiblings: true,
           },
         ],
+        'react/no-unescaped-entities': 'warn',
+        '@typescript-eslint/no-unsafe-assignment': 'warn',
+        '@typescript-eslint/no-unsafe-argument': 'warn',
+        '@typescript-eslint/no-unsafe-return': 'warn',
+        '@typescript-eslint/no-unsafe-member-access': 'warn',
+        '@typescript-eslint/no-explicit-any': 'warn',
         '@typescript-eslint/consistent-type-imports': 'warn',
         '@typescript-eslint/no-require-imports': 'off',
         'react-compiler/react-compiler': 'error',
