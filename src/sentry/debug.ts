@@ -174,7 +174,7 @@ export class DebugPropagator extends SentryPropagator {
   }
   inject(context: Context, carrier: unknown, setter: TextMapSetter): void {
     const activeSpan = trace.getSpan(context);
-    const url = activeSpan && getCurrentURL(activeSpan);
+    const url = activeSpan && getCurrentURL(activeSpan as Span);
     this.logger.info(
       { url },
       `${spanColored(activeSpan as unknown as ReadableSpan)} ${withColor('inject', styles.cyan)} ${
