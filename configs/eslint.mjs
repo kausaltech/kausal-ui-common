@@ -39,7 +39,7 @@ export function getEslintConfig(rootDir) {
             ignoreRestSiblings: true,
           },
         ],
-        'react/no-unescaped-entities': 'warn',
+        'react/no-unescaped-entities': ['error', { forbid: ['>', '}'] }],
         '@typescript-eslint/no-unsafe-assignment': 'warn',
         '@typescript-eslint/no-unsafe-argument': 'warn',
         '@typescript-eslint/no-unsafe-return': 'warn',
@@ -47,6 +47,7 @@ export function getEslintConfig(rootDir) {
         '@typescript-eslint/no-explicit-any': 'warn',
         '@typescript-eslint/consistent-type-imports': 'warn',
         '@typescript-eslint/no-require-imports': 'off',
+        '@typescript-eslint/ban-ts-comment': 'warn',
         'react-compiler/react-compiler': 'error',
       },
       languageOptions: {
