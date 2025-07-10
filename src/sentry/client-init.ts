@@ -7,6 +7,7 @@ import type { Logger } from 'pino';
 import {
   API_SENTRY_TUNNEL_PATH,
   FAKE_SENTRY_DSN,
+  NEXT_AUTH_SESSION_PATH,
 } from '@common/constants/routes.mjs';
 import { isLocalDev } from '@common/env';
 import {
@@ -85,9 +86,11 @@ export function initSentryBrowser() {
     integrations(integrations) {
       integrations = integrations.filter(
         (integration) =>
-          ![Sentry.browserTracingIntegration.name, Sentry.breadcrumbsIntegration.name, Sentry.replayIntegration.name].includes(
-            integration.name
-          )
+          ![
+            Sentry.browserTracingIntegration.name,
+            Sentry.breadcrumbsIntegration.name,
+            Sentry.replayIntegration.name,
+          ].includes(integration.name)
       );
       const breadcrumbOpts = isLocalDev ? { console: false } : {};
       integrations.push(Sentry.breadcrumbsIntegration(breadcrumbOpts));
@@ -112,7 +115,7 @@ export function initSentryBrowser() {
       const replay = Sentry.replayIntegration({
         maskAllText: false,
         maskAllInputs: false,
-        blockAllMedia: false,
+        blockAllMedia: true,
         useCompression: true,
       });
       integrations.push(replay);
