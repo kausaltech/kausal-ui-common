@@ -79,7 +79,7 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN --mount=type=cache,target=/app/.nex
   NEXTJS_BUILD_ID=${BUILD_ID} \
   NEXTJS_ASSET_PREFIX=${NEXTJS_ASSET_PREFIX_PLACEHOLDER} \
   DEPLOYMENT_TYPE="${DEPLOYMENT_TYPE_PLACEHOLDER}" \
-  npm run build --no-mangling && /manage-nextjs-cache.sh save
+  npm run build -- --no-mangling && /manage-nextjs-cache.sh save
 
 
 FROM nextjs_base AS final
