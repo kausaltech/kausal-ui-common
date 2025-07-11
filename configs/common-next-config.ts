@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access */
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 
+import { CycloneDxWebpackPlugin } from '@cyclonedx/webpack-plugin';
 import type { NextConfig } from 'next';
 import type * as Webpack from 'webpack';
 
@@ -50,8 +52,8 @@ export function getNextConfig(projectRoot: string, opts: { isPagesRouter?: boole
       return null;
     },
     webpack: (cfg: Webpack.Configuration, context) => {
-      const { isServer, dev } = context;
-      const isEdge = isServer && context.nextRuntime === 'edge';
+      const { isServer, dev, nextRuntime } = context;
+      const isEdge = isServer && nextRuntime === 'edge';
       const _webpack = context.webpack as typeof Webpack;
       if (!cfg.resolve || !cfg.resolve.alias || !Array.isArray(cfg.plugins))
         throw new Error('cfg.resolve not defined');
@@ -102,6 +104,14 @@ export function getNextConfig(projectRoot: string, opts: { isPagesRouter?: boole
           }
           return `webpack://${info.namespace}/${info.resourcePath}${loaders}`;
         };
+        const sbomComponent = isServer ? (isEdge ? 'edge': 'node') : 'browser';
+        const webpackOutputPath = cfg.output!.path!;
+        const sbomOutputPath = `${context.dir}/public/static/sbom/${sbomComponent}`;
+        cfg.plugins.push(new CycloneDxWebpackPlugin({
+          outputLocation: path.relative(webpackOutputPath, sbomOutputPath),
+          rootComponentVersion: process.env.BUILD_ID || 'unknown',
+          includeWellknown: false,
+        }));
       }
       return cfg;
     },
