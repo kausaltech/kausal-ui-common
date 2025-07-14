@@ -139,7 +139,8 @@ export function getSentryRelease(): string {
 }
 
 export function getAssetPrefix(): string {
-  const envVal = process.env.NEXTJS_ASSET_PREFIX || '';
+  const envVal = process.env.NEXTJS_ASSET_PREFIX;
+  if (!envVal) return '';
   if (envVal.endsWith('/')) {
     throw new Error("NEXTJS_ASSET_PREFIX must not end with '/'");
   }
