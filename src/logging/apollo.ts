@@ -44,24 +44,26 @@ export function logApolloError(error: ApolloErrorLike, options?: ApolloErrorCont
   const variables = opVars && Object.keys(opVars).length ? JSON.stringify(opVars, null, 0) : null;
 
   const logCtx: Bindings = {};
-  if (variables) logCtx['graphql-variables'] = variables;
+  if (variables) logCtx['graphql.variables'] = variables;
   if (options?.component) logCtx.component = options.component;
   const uri = options?.uri ?? (options?.client && findUriFromClient(options.client)) ?? null;
-  if (uri) logCtx.graphql_uri = uri;
-  const logger = getLogger('graphql', logCtx, options?.logger ?? operationCtx?.logger);
+  if (uri) logCtx['graphql.uri'] = uri;
+  const logger = getLogger('graphql-error', logCtx, options?.logger ?? operationCtx?.logger);
 
   const { graphQLErrors, networkError } = error;
   const clientErrors = 'clientErrors' in error ? error.clientErrors : undefined;
 
   if (networkError) {
+    const extraContext: Bindings = {};
     if ('statusCode' in networkError) {
-      logCtx.http_status = networkError.statusCode;
+      extraContext['http.response.status_code'] = networkError.statusCode;
+      extraContext['http.response.status_text'] = networkError.response.statusText;
     }
     // If the error is a network error, log it as such; nothing else needs to be logged
     if (isLocalDev) {
-      logger.error(`❌ Network error: ${networkError.message}`);
+      logger.error(extraContext, `❌ Network error: ${networkError.message}`);
     } else {
-      logger.error(`Network error: ${networkError.message}`);
+      logger.error(extraContext, `Network error: ${networkError.message}`);
     }
     return;
   }
