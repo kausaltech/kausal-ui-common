@@ -1,4 +1,4 @@
-#syntax=docker/dockerfile:1.14-labs
+#syntax=docker/dockerfile:1.17-labs
 ARG base_image=node:24-alpine3.22
 
 #
@@ -63,7 +63,7 @@ ARG SENTRY_URL
 ARG SENTRY_ORG
 ARG SENTRY_SPOTLIGHT=0
 
-COPY docker/manage-nextjs-cache.sh /
+COPY kausal_common/docker/manage-nextjs-cache.sh /
 # Remove the NextJS build cache if packages change
 RUN --mount=type=cache,target=/app/.next/cache \
   /manage-nextjs-cache.sh check
@@ -81,6 +81,25 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN --mount=type=cache,target=/app/.nex
   DEPLOYMENT_TYPE="${DEPLOYMENT_TYPE_PLACEHOLDER}" \
   npm run build -- --no-mangling && /manage-nextjs-cache.sh save
 
+RUN --mount=type=cache,target=/tools <<EOF
+  set -e
+  apk update && apk add --no-cache icu
+  if [ ! -f /tools/cyclonedx ]; then
+    apk add --no-cache curl
+    curl -L -o /tools/cyclonedx https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.28.2/cyclonedx-linux-musl-x64
+    chmod a+x /tools/cyclonedx
+  fi
+
+  mkdir /sbom
+  cd /app/public/static/sbom
+  /tools/cyclonedx merge --input-files */bom.json --output-file /sbom/nextjs.cdx.json \
+    --name ${SENTRY_PROJECT} --version ${BUILD_ID}
+
+  for dir in * ; do
+    mv ${dir}/bom.json /sbom/${dir}.cdx.json
+    /tools/cyclonedx convert --input-format json --output-format spdxjson --input-file /sbom/${dir}.cdx.json --output-file /sbom/${dir}.spdx.json
+  done
+EOF
 
 FROM nextjs_base AS final
 
@@ -102,8 +121,10 @@ RUN \
 
 # For standalone builds
 COPY --chown=nextjs:nodejs --from=builder /app/.next/standalone ./
+COPY --chown=nextjs:nodejs --from=builder /app/package-lock.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder /sbom /sbom
 
 COPY ./kausal_common/docker/start-server.sh /entrypoint.sh
 COPY ./kausal_common/docker/Caddyfile /etc/caddy/

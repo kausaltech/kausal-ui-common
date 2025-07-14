@@ -107,9 +107,12 @@ export function getNextConfig(projectRoot: string, opts: { isPagesRouter?: boole
         const sbomComponent = isServer ? (isEdge ? 'edge': 'node') : 'browser';
         const webpackOutputPath = cfg.output!.path!;
         const sbomOutputPath = `${context.dir}/public/static/sbom/${sbomComponent}`;
+        const buildVersion = (process.env.BUILD_ID || 'unknown').replaceAll('_', '-');
         cfg.plugins.push(new CycloneDxWebpackPlugin({
           outputLocation: path.relative(webpackOutputPath, sbomOutputPath),
-          rootComponentVersion: process.env.BUILD_ID || 'unknown',
+          rootComponentVersion: `1.0.0-${buildVersion}`,
+          rootComponentAutodetect: false,
+          rootComponentName: `${getProjectIdFromPackageJson(context.dir)}-${sbomComponent}`,
           includeWellknown: false,
         }));
       }
