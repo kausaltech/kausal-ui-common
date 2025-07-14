@@ -10,11 +10,12 @@ import * as Sentry from '@sentry/node';
 import type { NodeClient } from '@sentry/node';
 import { SentryPropagator, SentrySampler, SentrySpanProcessor } from '@sentry/opentelemetry';
 
-import { getBuildId, getProjectId } from '@common/env';
+import { getBuildId, getProjectId, printRuntimeConfig } from '@common/env';
 import { envToBool } from '@common/env/utils';
 import { initNodeRootLogger } from '@common/logging/node';
 import { DebugPropagator, DebugSampler, DebugSentrySpanProcessor } from '@common/sentry/debug';
-import { getHttpInstrumentationOptions } from '@common/sentry/server-init';
+import { getHttpInstrumentationOptions, getSpotlightViewUrl, initSentry } from '@common/sentry/server-init';
+import { getLogger } from '@common/logging';
 
 function initDebugLogging() {
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
@@ -130,4 +131,20 @@ export async function initMetrics() {
 
   console.log(`Prometheus metrics served at :${metricsPort}`);
   */
+}
+
+export async function initAll(productName: string) {
+  printRuntimeConfig(productName);
+  const spotlightUrl = getSpotlightViewUrl();
+  const nodeOtel = await import('@common/instrumentation/node');
+  nodeOtel.initNodeLogging();
+  const logger = getLogger('init');
+  const sentryClient = await initSentry();
+  if (spotlightUrl && sentryClient) {
+    logger.info(
+      { release: sentryClient.getOptions().release },
+      `🔦 Sentry Spotlight enabled at: ${spotlightUrl}`
+    );
+  }
+  await nodeOtel.initTelemetry(sentryClient as NodeClient);
 }

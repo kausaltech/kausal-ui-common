@@ -1,11 +1,12 @@
-import type chalkModule from 'chalk';
+import type { ChalkInstance } from 'chalk';
+import type * as chalkModule from 'chalk';
 import dayjs from 'dayjs';
 import stringify from 'fast-safe-stringify';
 import type { Level, LoggerOptions, WriteFn } from 'pino';
 
 import type { LogRecord } from './logger';
 
-type CI = chalkModule.Chalk;
+type CI = ChalkInstance;
 
 type LogFunc = (...args: unknown[]) => void;
 
@@ -26,7 +27,7 @@ export type MessageStyles = {
 
 let messageStyles: MessageStyles;
 
-export function setupStyleMapping(chalk: typeof chalkModule) {
+export function setupStyleMapping(chalk: ChalkInstance) {
   loggerFuncMap = {
     fatal: console.error,
     error: console.error,
@@ -153,8 +154,8 @@ const write: WriteFn = (obj: LogRecord) => {
 };
 
 export function setupBrowserLogging(options: LoggerOptions) {
-  const chalk = require('chalk') as typeof chalkModule;
-  chalk.level = 3;
+  const chalkMod = require('chalk') as typeof chalkModule;
+  const chalk = new chalkMod.Chalk({ level: 3 });
   setupStyleMapping(chalk);
   options.browser = {
     formatters: {
@@ -176,7 +177,8 @@ export function setupEdgeLogging(options: LoggerOptions) {
     }
   }
   */
-  const chalk = require('chalk') as typeof chalkModule;
+  const chalkMod = require('chalk') as typeof chalkModule;
+  const chalk = new chalkMod.Chalk({ level: 3 });
   chalk.level = 3;
   setupStyleMapping(chalk);
   options.browser = {

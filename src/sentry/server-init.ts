@@ -316,6 +316,12 @@ function getEdgeOptions() {
 
 // eslint-disable-next-line @typescript-eslint/require-await
 export async function initSentry(): Promise<Client | undefined> {
+  // Sentry requires a global.next object to be present, but it's not always there.
+  if (!('next' in globalThis)) {
+    globalThis.next = {
+      version: '15.4.0',
+    };
+  }
   if (process.env.NEXT_RUNTIME === 'edge') {
     Sentry.init(getEdgeOptions());
   } else {

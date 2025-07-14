@@ -23,6 +23,7 @@ import { getProjectId } from '@common/env/static';
 import { envToBool } from '@common/env/utils';
 import { initEdgeRootLogger } from '@common/logging/edge';
 import { DebugSentrySpanProcessor } from '@common/sentry/debug';
+import { initSentry } from '@common/sentry/server-init';
 
 class _NullSpanExporter implements SpanExporter {
   export(_spans: ReadableSpan[], _resultCallback: (result: ExportResult) => void): void {
@@ -68,4 +69,11 @@ export async function initTelemetry(sentryClient: VercelEdgeClient) {
   api.context.setGlobalContextManager(new SentryContextManager());
   api.trace.setGlobalTracerProvider(provider);
   api.propagation.setGlobalPropagator(propagator);
+}
+
+
+export async function initAll(_productName: string) {
+  initEdgeLogging();
+  const sentryClient = await initSentry();
+  await initTelemetry(sentryClient as VercelEdgeClient);
 }
