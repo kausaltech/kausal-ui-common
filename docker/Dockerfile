@@ -13,16 +13,32 @@ ARG NPM_REGISTRY_SERVER
 ENV NPM_CONFIG_CACHE=/npm-cache
 COPY package*.json ./
 
-RUN \
-  if [ ! -z "${NPM_REGISTRY_SERVER}" ] ; then \
-  echo "@kausal-private:registry=${NPM_REGISTRY_SERVER}" >> $HOME/.npmrc ; \
-  echo "registry=https://registry.npmjs.org/" >> $HOME/.npmrc ; \
-  echo "$(echo ${NPM_REGISTRY_SERVER} | sed -e 's/https://')/"':_authToken=${NPM_TOKEN}' >> $HOME/.npmrc ; \
-  echo "Using custom registry at: ${NPM_REGISTRY_SERVER}" ; \
+RUN --mount=type=secret,id=NPM_USER --mount=type=secret,id=NPM_PASSWORD --mount=type=cache,target=/npm-cache <<EOF
+  set -e
+  if [ ! -z "${NPM_REGISTRY_SERVER}" ] ; then
+    echo "Using custom registry at: ${NPM_REGISTRY_SERVER}"
+    if [ -z "${NPM_USER}" -o -z "${NPM_PASSWORD}" ] ; then
+      if [ ! -f /run/secrets/NPM_USER  -o ! -f /run/secrets/NPM_PASSWORD ] ; then
+        echo "Custom registry credentials not passed as secrets"
+        exit 1
+      fi
+      export NPM_USER="$(cat /run/secrets/NPM_USER)"
+      export NPM_PASS="$(cat /run/secrets/NPM_PASSWORD)"
+    else
+      export NPM_PASS="${NPM_PASSWORD}"
+    fi
+    if [ -z "$NPM_USER" -o -z "$NPM_PASS" ] ; then
+      echo "Custom registry credentials not set"
+      exit 1
+    fi
+    echo "Logging in to custom registry"
+    npx -y npm-cli-login@1.0.0 -r "${NPM_REGISTRY_SERVER}" -e "${NPM_USER}@kausal.tech"
+    echo "@kausal-private:registry=${NPM_REGISTRY_SERVER}" >> $HOME/.npmrc
+    echo "registry=https://registry.npmjs.org/" >> $HOME/.npmrc
   fi
+EOF
 
-RUN --mount=type=secret,id=NPM_TOKEN --mount=type=cache,target=/npm-cache \
-  NPM_TOKEN=$( ([ -f /run/secrets/NPM_TOKEN ] && cat /run/secrets/NPM_TOKEN) || echo -n "$NPM_TOKEN") \
+RUN --mount=type=cache,target=/npm-cache \
   npm ci
 
 #
@@ -106,11 +122,13 @@ FROM nextjs_base AS final
 # Add nextjs user
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs && chown nextjs:nodejs /app
 
-RUN \
-  apk update && \
-  apk add --no-cache bash multirun && \
-  apk add --no-cache caddy --repository https://dl-cdn.alpinelinux.org/alpine/edge/community && \
+RUN <<EOF
+  set -e
+  apk update
+  apk add --no-cache bash multirun
+  apk add --no-cache caddy --repository https://dl-cdn.alpinelinux.org/alpine/edge/community
   rm -rf /var/cache/apk
+EOF
 
 # For non-standalone builds
 # COPY --chown=nextjs:nodejs --from=deps /app/node_modules ./node_modules
@@ -141,17 +159,19 @@ ENV \
   SENTRY_SPOTLIGHT=${SENTRY_SPOTLIGHT} \
   APP_ROOT=/app
 
-RUN \
-  export PH_FN=runtime-placeholders.txt ; \
-  if [ -n "${SENTRY_DSN_PLACEHOLDER}" ] ; then echo "SENTRY_DSN|${SENTRY_DSN_PLACEHOLDER}" >> $PH_FN ; fi ;\
-  if [ -n "${NEXTJS_ASSET_PREFIX_PLACEHOLDER}" ] ; then echo "NEXTJS_ASSET_PREFIX|${NEXTJS_ASSET_PREFIX_PLACEHOLDER}" >> $PH_FN ; fi ;\
-  if [ -n "${DEPLOYMENT_TYPE_PLACEHOLDER}" ] ; then echo "DEPLOYMENT_TYPE|${DEPLOYMENT_TYPE_PLACEHOLDER}" >> $PH_FN ; fi
+RUN <<EOF
+  export PH_FN=runtime-placeholders.txt
+  if [ -n "${SENTRY_DSN_PLACEHOLDER}" ]; then echo "SENTRY_DSN|${SENTRY_DSN_PLACEHOLDER}" >>$PH_FN; fi
+  if [ -n "${NEXTJS_ASSET_PREFIX_PLACEHOLDER}" ]; then echo "NEXTJS_ASSET_PREFIX|${NEXTJS_ASSET_PREFIX_PLACEHOLDER}" >>$PH_FN; fi
+  if [ -n "${DEPLOYMENT_TYPE_PLACEHOLDER}" ]; then echo "DEPLOYMENT_TYPE|${DEPLOYMENT_TYPE_PLACEHOLDER}" >>$PH_FN; fi
+EOF
 
-RUN \
-  export PHF_FN=runtime-placeholder-files.txt ; \
-  export PHF_FILES=$(find .next -name '*.json' -o -name '*.html' -o -name '*.js' -o -name '*.css') ; \
-  grep -l -e "${SENTRY_DSN_PLACEHOLDER}" -e "${NEXTJS_ASSET_PREFIX_PLACEHOLDER}" -e "${DEPLOYMENT_TYPE_PLACEHOLDER}" $PHF_FILES > $PHF_FN ; \
+RUN <<EOF
+  export PHF_FN=runtime-placeholder-files.txt
+  export PHF_FILES=$(find .next -name '*.json' -o -name '*.html' -o -name '*.js' -o -name '*.css')
+  grep -l -e "${SENTRY_DSN_PLACEHOLDER}" -e "${NEXTJS_ASSET_PREFIX_PLACEHOLDER}" -e "${DEPLOYMENT_TYPE_PLACEHOLDER}" $PHF_FILES > $PHF_FN
   echo server.js >> $PHF_FN
+EOF
 
 ARG NEXTJS_PORT=3000
 ARG CADDY_PORT=3001
