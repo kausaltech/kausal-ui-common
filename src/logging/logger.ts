@@ -58,7 +58,9 @@ export type LoggerOptions = {
   noSpan?: boolean;
 };
 
-export function userLogContext(user: { id?: string | null, email?: string | null, name?: string | null } | null): Bindings {
+export function userLogContext(
+  user: { id?: string | null; email?: string | null; name?: string | null } | null
+): Bindings {
   if (!user) return {};
   const ctx: Bindings = {};
   if (user.id) {

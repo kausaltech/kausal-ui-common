@@ -7,7 +7,6 @@ import type { Logger } from 'pino';
 import {
   API_SENTRY_TUNNEL_PATH,
   FAKE_SENTRY_DSN,
-  NEXT_AUTH_SESSION_PATH,
 } from '@common/constants/routes.mjs';
 import { isLocalDev } from '@common/env';
 import {

@@ -104,17 +104,19 @@ export function getNextConfig(projectRoot: string, opts: { isPagesRouter?: boole
           }
           return `webpack://${info.namespace}/${info.resourcePath}${loaders}`;
         };
-        const sbomComponent = isServer ? (isEdge ? 'edge': 'node') : 'browser';
+        const sbomComponent = isServer ? (isEdge ? 'edge' : 'node') : 'browser';
         const webpackOutputPath = cfg.output!.path!;
         const sbomOutputPath = `${context.dir}/public/static/sbom/${sbomComponent}`;
         const buildVersion = (process.env.BUILD_ID || 'unknown').replaceAll('_', '-');
-        cfg.plugins.push(new CycloneDxWebpackPlugin({
-          outputLocation: path.relative(webpackOutputPath, sbomOutputPath),
-          rootComponentVersion: `1.0.0-${buildVersion}`,
-          rootComponentAutodetect: false,
-          rootComponentName: `${getProjectIdFromPackageJson(context.dir)}-${sbomComponent}`,
-          includeWellknown: false,
-        }));
+        cfg.plugins.push(
+          new CycloneDxWebpackPlugin({
+            outputLocation: path.relative(webpackOutputPath, sbomOutputPath),
+            rootComponentVersion: `1.0.0-${buildVersion}`,
+            rootComponentAutodetect: false,
+            rootComponentName: `${getProjectIdFromPackageJson(context.dir)}-${sbomComponent}`,
+            includeWellknown: false,
+          })
+        );
       }
       return cfg;
     },

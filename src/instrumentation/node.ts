@@ -12,10 +12,14 @@ import { SentryPropagator, SentrySampler, SentrySpanProcessor } from '@sentry/op
 
 import { getBuildId, getProjectId, printRuntimeConfig } from '@common/env';
 import { envToBool } from '@common/env/utils';
+import { getLogger } from '@common/logging';
 import { initNodeRootLogger } from '@common/logging/node';
 import { DebugPropagator, DebugSampler, DebugSentrySpanProcessor } from '@common/sentry/debug';
-import { getHttpInstrumentationOptions, getSpotlightViewUrl, initSentry } from '@common/sentry/server-init';
-import { getLogger } from '@common/logging';
+import {
+  getHttpInstrumentationOptions,
+  getSpotlightViewUrl,
+  initSentry,
+} from '@common/sentry/server-init';
 
 function initDebugLogging() {
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);

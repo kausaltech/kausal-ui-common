@@ -2,7 +2,7 @@ type ForwardOptions = {
   clientIp?: string;
   contentType?: string | null;
   referer?: string | null;
-}
+};
 
 export async function forwardToSentry(
   envelopeBytes: ArrayBuffer,

@@ -163,7 +163,7 @@ export function getSentryTraceSampleRate(): number {
 export function getSentryReplaysSampleRate(): number {
   const debugEnabled = process.env.SENTRY_DEBUG === '1';
   const replaysEnabled = envToBool(env('SENTRY_SESSION_REPLAYS'), false);
-  const defaultRate = (debugEnabled || replaysEnabled) ? 1.0 : 0.0;
+  const defaultRate = debugEnabled || replaysEnabled ? 1.0 : 0.0;
   return defaultRate;
 }
 

@@ -71,7 +71,6 @@ export async function initTelemetry(sentryClient: VercelEdgeClient) {
   api.propagation.setGlobalPropagator(propagator);
 }
 
-
 export async function initAll(_productName: string) {
   initEdgeLogging();
   const sentryClient = await initSentry();
