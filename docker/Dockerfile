@@ -41,6 +41,16 @@ EOF
 RUN --mount=type=cache,target=/npm-cache \
   npm ci
 
+RUN <<EOF
+  set -e
+  if grep -q "@kausal-private/themes-private" package.json && [ -n "${NPM_REGISTRY_SERVER}" ]; then
+    if [ ! -d /app/node_modules/@kausal-private/themes-private ]; then
+      echo "Private themes not found in node_modules"
+      exit 1
+    fi
+  fi
+EOF
+
 #
 # NextJS base
 #
