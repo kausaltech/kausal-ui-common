@@ -152,6 +152,7 @@ COPY --chown=nextjs:nodejs --from=builder /app/.next/standalone ./
 COPY --chown=nextjs:nodejs --from=builder /app/package-lock.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs --parents /app/node_modules/./@kausal-private* ./node_modules/
 COPY --from=builder /sbom /sbom
 
 COPY ./kausal_common/docker/start-server.sh /entrypoint.sh
