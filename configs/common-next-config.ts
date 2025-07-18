@@ -13,9 +13,12 @@ const isProd = process.env.NODE_ENV === 'production';
 const standaloneBuild = process.env.NEXTJS_STANDALONE_BUILD === '1';
 const prodAssetPrefix = isProd ? process.env.NEXTJS_ASSET_PREFIX : undefined;
 
-export function getNextConfig(projectRoot: string, opts: { isPagesRouter?: boolean }): NextConfig {
+export function getNextConfig(
+  projectRoot: string,
+  opts: { isPagesRouter?: boolean; cssInJsLibrary?: 'styled-components' | 'emotion' }
+): NextConfig {
   opts = opts || {};
-  const { isPagesRouter = false } = opts;
+  const { isPagesRouter = false, cssInJsLibrary = 'styled-components' } = opts;
 
   const config: NextConfig = {
     assetPrefix: prodAssetPrefix,
@@ -29,7 +32,8 @@ export function getNextConfig(projectRoot: string, opts: { isPagesRouter?: boole
     productionBrowserSourceMaps: true,
     compiler: {
       // Enables the styled-components SWC transform
-      styledComponents: true,
+      styledComponents: cssInJsLibrary === 'styled-components',
+      emotion: cssInJsLibrary === 'emotion',
       define: {
         ...getCommonDefines(projectRoot, false),
       },
