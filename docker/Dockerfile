@@ -10,10 +10,13 @@ WORKDIR /app
 
 ARG NPM_REGISTRY_SERVER
 
-ENV NPM_CONFIG_CACHE=/npm-cache
-COPY package*.json ./
+ENV \
+  NPM_CONFIG_CACHE=/cache/npm \
+  XDG_CACHE_HOME=/cache
+COPY package*.json pnpm-lock.* ./
 
-RUN --mount=type=secret,id=NPM_USER --mount=type=secret,id=NPM_PASSWORD --mount=type=cache,target=/npm-cache <<EOF
+RUN --mount=type=secret,id=NPM_USER --mount=type=secret,id=NPM_PASSWORD --mount=type=cache,target=/cache <<EOF
+  echo "Setting up npm registry"
   set -e
   if [ ! -z "${NPM_REGISTRY_SERVER}" ] ; then
     echo "Using custom registry at: ${NPM_REGISTRY_SERVER}"
@@ -38,10 +41,21 @@ RUN --mount=type=secret,id=NPM_USER --mount=type=secret,id=NPM_PASSWORD --mount=
   fi
 EOF
 
-RUN --mount=type=cache,target=/npm-cache \
-  npm ci
+RUN --mount=type=cache,target=/cache <<EOF
+  echo "Installing npm dependencies"
+  set -e
+  corepack enable
+  if [ -f pnpm-lock.yaml ]; then
+    pnpm config set store-dir /cache/pnpm-store
+    echo "nodeLinker: hoisted" > pnpm-workspace.yaml
+    pnpm install --frozen-lockfile
+  else
+    npm ci
+  fi
+EOF
 
 RUN <<EOF
+  echo "Checking for private themes"
   set -e
   if grep -q "@kausal-private/themes-private" package.json && [ -n "${NPM_REGISTRY_SERVER}" ]; then
     if [ ! -d /app/node_modules/@kausal-private/themes-private ]; then
@@ -108,8 +122,10 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN --mount=type=cache,target=/app/.nex
   npm run build -- --no-mangling && /manage-nextjs-cache.sh save
 
 RUN --mount=type=cache,target=/tools <<EOF
+  echo "Installing tools"
   set -e
-  apk update && apk add --no-cache icu
+  apk update
+  apk add --no-cache icu
   if [ ! -f /tools/cyclonedx ]; then
     apk add --no-cache curl
     curl -L -o /tools/cyclonedx https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.28.2/cyclonedx-linux-musl-x64
@@ -149,10 +165,11 @@ EOF
 
 # For standalone builds
 COPY --chown=nextjs:nodejs --from=builder /app/.next/standalone ./
-COPY --chown=nextjs:nodejs --from=builder /app/package-lock.json ./
+COPY --chown=nextjs:nodejs --from=builder /app/package-lock.json* /app/pnpm-lock.yaml* ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs --parents /app/node_modules/./@kausal-private* ./node_modules/
+# COPY --from=builder --chown=nextjs:nodejs --parents /app/node_modules/.pnpm/./@kausal-private* ./node_modules/.pnpm/
 COPY --from=builder /sbom /sbom
 
 COPY ./kausal_common/docker/start-server.sh /entrypoint.sh
