@@ -119,6 +119,16 @@ export default class LRUCache<K, V> implements NodeChain {
     this._prev = this._next = this;
   }
 
+  print(printValueCb: (value: V) => string) {
+    console.log(`LRUCache has ${this._map.size} entries`);
+    const now = Date.now();
+    this._map.forEach((node, key) => {
+      const age = now - node.lastAccess;
+
+      console.log(' ', key, `(age: ${age / 1000}s, ttl: ${node.ttl / 1000}s) -> ${printValueCb(node.value as V)}`);
+    });
+  }
+
   /** Set max */
   get max() {
     return this._max;
@@ -248,6 +258,7 @@ export default class LRUCache<K, V> implements NodeChain {
   }
 
   get(key: K): V | undefined;
+  get(key: K, upsert: boolean, additionalUpsertCbArgs?: any[]): V | Promise<V> | undefined;
 
   /** Get element from the cache */
   get(key: K, upsert?: boolean, additionalUpsertCbArgs?: any[]): V | Promise<V> | undefined {
@@ -352,9 +363,8 @@ export default class LRUCache<K, V> implements NodeChain {
 
   /** Clear all the cache excluding permanent items */
   clearTemp() {
-    let el = this._prev as NodeChain;
+    let el = this._prev;
     const map = this._map;
-    // @ts-ignore
     while (el !== this) {
       map.delete((el as Node<K, V>).key);
       el = el._next!;
@@ -433,7 +443,7 @@ export default class LRUCache<K, V> implements NodeChain {
       if (this._totalBytes < 0) this._totalBytes = 0;
       this._tmpBytes = this._tmpSize = 0;
       // Break ttl
-      clearInterval(this._ttlP!);
+      clearInterval(this._ttlP);
       this._ttlP = undefined;
     } else {
       this._prev = p;
