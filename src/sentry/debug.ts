@@ -24,7 +24,8 @@ function getLogger(name: string) {
 }
 
 function randomColor(s: string): CSPair {
-  const color = styles.color.ansi16m.hex(getIdentifierColor(s));
+  const rgb = styles.hexToRgb(getIdentifierColor(s));
+  const color = styles.color.ansi16m(...rgb);
   return {
     open: color,
     close: styles.color.close,
