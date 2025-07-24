@@ -67,6 +67,7 @@ export function initSentryBrowser() {
     tunnel: API_SENTRY_TUNNEL_PATH,
     sendDefaultPii: true,
     enabled: !!(envDsn || spotlightUrl),
+    maxValueLength: (!envDsn && spotlightUrl) ? 10000 : undefined,
     ignoreErrors: ['NEXT_NOT_FOUND'],
     parentSpanIsAlwaysRootSpan: false,
     tracesSampler(ctx: SamplingContext) {

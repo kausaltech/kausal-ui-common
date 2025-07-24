@@ -133,6 +133,7 @@ function getCommonOptions() {
     environment,
     release: getSentryRelease(),
     enabled: enableSpotlight ? true : undefined,
+    maxValueLength: (!runtimeConfig.sentryDsn && enableSpotlight) ? 10000 : undefined,
     // If we're using Spotlight, and a DSN is not set, we need to create a fake transport so that tracing works.
     transport: runtimeConfig.sentryDsn || !enableSpotlight ? undefined : makeNullTransport,
     tracesSampler(ctx: SamplingContext) {

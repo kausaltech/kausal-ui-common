@@ -102,6 +102,10 @@ export const createSentryLink = (uri: string) => {
       },
     };
     return Sentry.startSpanManual(spanOpts, (span, finish) => {
+      if (isLocalDev) {
+        span.setAttribute('graphql.document', operation.query.loc?.source.body ?? '<unknown>');
+        span.setAttribute('graphql.variables', JSON.stringify(operation.variables) ?? '<unknown>');
+      }
       // Set propagation context for the outgoing request
       operation.setContext((previousContext: DefaultApolloContext) => {
         const headers: DefaultApolloContext['headers'] = {
