@@ -17,15 +17,29 @@ export function getEslintConfig(rootDir) {
     allConfig: js.configs.all,
   });
 
+  /**
+   * @param {'warn' | 'error'} level
+   * @returns {Record<string, 'warn' | 'error'>}
+   */
+  function getAnyRules(level) {
+    return {
+      '@typescript-eslint/no-unsafe-assignment': level,
+      '@typescript-eslint/no-unsafe-argument': level,
+      '@typescript-eslint/no-unsafe-return': level,
+      '@typescript-eslint/no-unsafe-member-access': level,
+      '@typescript-eslint/no-explicit-any': level,
+      '@typescript-eslint/consistent-type-imports': level,
+    };
+  }
+
   const config = ts.config(
     ...compat.extends('next/core-web-vitals', 'next/typescript'),
-    [globalIgnores(['**/__generated__/**', '.next/**', '.*/**'])],
+    [globalIgnores(['**/__generated__/**', '.next/**', '.*/**', 'Attic/**'])],
     ...ts.configs.recommendedTypeChecked,
     {
       plugins: {
         'react-compiler': reactCompiler,
       },
-      ignores: ['src/common/__generated__/*'],
       rules: {
         'no-unused-vars': 'off',
         '@typescript-eslint/no-unused-vars': [
@@ -40,12 +54,7 @@ export function getEslintConfig(rootDir) {
           },
         ],
         'react/no-unescaped-entities': ['error', { forbid: ['>', '}'] }],
-        '@typescript-eslint/no-unsafe-assignment': 'warn',
-        '@typescript-eslint/no-unsafe-argument': 'warn',
-        '@typescript-eslint/no-unsafe-return': 'warn',
-        '@typescript-eslint/no-unsafe-member-access': 'warn',
-        '@typescript-eslint/no-explicit-any': 'warn',
-        '@typescript-eslint/consistent-type-imports': 'warn',
+        ...getAnyRules('error'),
         '@typescript-eslint/no-require-imports': 'off',
         '@typescript-eslint/ban-ts-comment': 'warn',
         'react-compiler/react-compiler': 'error',
