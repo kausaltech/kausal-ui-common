@@ -1,17 +1,30 @@
 import { useEffect, useRef } from 'react';
 
-import { BarChart, CustomChart, LineChart, PieChart } from 'echarts/charts';
+import {
+  BarChart,
+  type BarSeriesOption,
+  CustomChart,
+  LineChart,
+  type LineSeriesOption,
+  PieChart,
+  type PieSeriesOption,
+} from 'echarts/charts';
 import {
   DatasetComponent,
+  type DatasetComponentOption,
   GraphicComponent,
   GridComponent,
+  type GridComponentOption,
   LegendComponent,
   MarkAreaComponent,
   MarkLineComponent,
   TitleComponent,
+  type TitleComponentOption,
   TooltipComponent,
+  type TooltipComponentOption,
   TransformComponent,
 } from 'echarts/components';
+import type { ComposeOption } from 'echarts/core';
 import * as echarts from 'echarts/core';
 import { LabelLayout, UniversalTransition } from 'echarts/features';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -57,6 +70,17 @@ const resizeLegend = (chart: echarts.ECharts) => {
     });
   }
 };
+
+// Create an Option type with only the required components and charts via ComposeOption
+export type ECOption = ComposeOption<
+  | BarSeriesOption
+  | LineSeriesOption
+  | PieSeriesOption
+  | TitleComponentOption
+  | TooltipComponentOption
+  | GridComponentOption
+  | DatasetComponentOption
+>;
 
 type Props = {
   isLoading: boolean;
