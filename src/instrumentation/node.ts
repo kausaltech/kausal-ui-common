@@ -1,7 +1,7 @@
 import { type Context, DiagConsoleLogger, DiagLogLevel, type Span, diag } from '@opentelemetry/api';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
-import { resourceFromAttributes } from '@opentelemetry/resources';
+import { Resource } from '@opentelemetry/resources';
 import { type ReadableSpan, type SpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
@@ -34,7 +34,7 @@ class GeneralSpanProcessor implements SpanProcessor {
     if (
       span.attributes['sentry.sentry_trace_backfill'] &&
       span.attributes['http.method'] &&
-      !span.parentSpanContext
+      !span.parentSpanId
     ) {
       delete span.attributes['sentry.sentry_trace_backfill'];
     }
@@ -71,7 +71,7 @@ export async function initTelemetry(sentryClient: NodeClient) {
     // Ensure the correct subset of traces is sent to Sentry
     // This also ensures trace propagation works as expected
     sampler: traceSampler,
-    resource: resourceFromAttributes({
+    resource: new Resource({
       [ATTR_SERVICE_NAME]: getProjectId(),
       [ATTR_SERVICE_VERSION]: getBuildId(),
     }),

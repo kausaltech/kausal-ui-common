@@ -2,7 +2,7 @@
 import * as api from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import type { ExportResult } from '@opentelemetry/core';
-import { resourceFromAttributes } from '@opentelemetry/resources';
+import { Resource } from '@opentelemetry/resources';
 import {
   BasicTracerProvider,
   type ReadableSpan,
@@ -49,16 +49,10 @@ export async function initTelemetry(sentryClient: VercelEdgeClient) {
   }
   const propagator = new SentryPropagator();
   const traceSampler = new SentrySampler(sentryClient);
-  const resource = resourceFromAttributes({
+  const resource = new Resource({
     [ATTR_SERVICE_NAME]: getProjectId(),
     [ATTR_SERVICE_VERSION]: getBuildId(),
   });
-  /*
-  const resource = resourceFromAttributes({
-    [ATTR_SERVICE_NAME]: getProjectId(),
-    [ATTR_SERVICE_VERSION]: getBuildId(),
-  });
-  */
   const provider = new BasicTracerProvider({
     resource,
     spanProcessors,
