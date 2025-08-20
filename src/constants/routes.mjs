@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 export const GRAPHQL_CLIENT_PROXY_PATH = '/api/graphql';
 
 export const SENTRY_TUNNEL_PUBLIC_PATH = '/sdk-events';

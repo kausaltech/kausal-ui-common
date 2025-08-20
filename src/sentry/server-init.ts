@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 import { context, propagation } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
 import { serializeEnvelope } from '@sentry/core';

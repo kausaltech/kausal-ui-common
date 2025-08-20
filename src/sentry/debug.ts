@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import type { Context, TextMapGetter, TextMapSetter } from '@opentelemetry/api';
 import { SpanKind } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
@@ -132,8 +133,8 @@ export class DebugSentrySpanProcessor extends SentrySpanProcessor {
     super.onStart(span_, _parentContext);
     const span = span_ as unknown as ReadableSpan;
     const parentAttrs = {};
-    if ('parentSpanId' in span && span.parentSpanId) {
-      parentAttrs['span.parent'] = `${span.parentSpanId}`;
+    if ('parentSpanContext' in span && span.parentSpanContext) {
+      parentAttrs['span.parent'] = `${span.parentSpanContext.spanId}`;
     }
     this.logger.info(
       { recording: span_.isRecording(), ...span.attributes, ...parentAttrs },

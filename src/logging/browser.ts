@@ -14,14 +14,8 @@ export function initBrowserRootLogger() {
     options.browser = {
       write: () => void 0,
     };
-  }
-  if (prodLogging) {
-    options.browser = {
-      write: () => void 0,
-    };
   } else {
     const { setupBrowserLogging } = require('./chalk-logger') as typeof ChalkLogger;
-    //const { setupBrowserLogging } = await import('./chalk-logger');
     setupBrowserLogging(options);
     options.browser!.formatters!.log = (object) => {
       const attrs = getSpanContext();

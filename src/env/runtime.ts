@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import type { Metadata } from 'next';
 
 import type * as LoggingModule from '../logging';

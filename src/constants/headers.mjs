@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 export const DEFAULT_LANGUAGE_HEADER = 'x-default-language';
 export const SUPPORTED_LANGUAGES_HEADER = 'x-supported-languages';
 export const WILDCARD_DOMAINS_HEADER = 'x-wildcard-domains';

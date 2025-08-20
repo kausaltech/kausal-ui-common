@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 //@ts-check
 
 const FALSY_ENV_VALUES = new Set(['false', 'f', 'n', 'no', 'off', '0']);

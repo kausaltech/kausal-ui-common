@@ -1,8 +1,8 @@
+/* istanbul ignore file */
 import * as api from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import type { ExportResult } from '@opentelemetry/core';
-//import { resourceFromAttributes } from '@opentelemetry/resources';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
   BasicTracerProvider,
   type ReadableSpan,
@@ -49,7 +49,7 @@ export async function initTelemetry(sentryClient: VercelEdgeClient) {
   }
   const propagator = new SentryPropagator();
   const traceSampler = new SentrySampler(sentryClient);
-  const resource = new Resource({
+  const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: getProjectId(),
     [ATTR_SERVICE_VERSION]: getBuildId(),
   });
@@ -74,5 +74,5 @@ export async function initTelemetry(sentryClient: VercelEdgeClient) {
 export async function initAll(_productName: string) {
   initEdgeLogging();
   const sentryClient = await initSentry();
-  await initTelemetry(sentryClient as VercelEdgeClient);
+  await initTelemetry(sentryClient as unknown as VercelEdgeClient);
 }

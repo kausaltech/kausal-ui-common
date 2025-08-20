@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { ApolloLink, type NextLink, type Operation } from '@apollo/client';
 import { loadDevMessages, loadErrorMessages } from '@apollo/client/dev';
 import { type ErrorResponse, onError } from '@apollo/client/link/error';

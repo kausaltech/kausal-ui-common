@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
@@ -161,6 +162,7 @@ export default class LRUCache<K, V> implements NodeChain {
     // reload cleaner
     if (this._ttlP) {
       clearInterval(this._ttlP);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const interv = setInterval(this._ttlClean.bind(this), this._ttlInterval);
       this._ttlP = interv;
       interv.unref?.();
@@ -252,6 +254,7 @@ export default class LRUCache<K, V> implements NodeChain {
         this._delete(this._prev as Node<K, V>);
       }
       // Run TTL
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       if (!this._ttlP) this._ttlP = setInterval(this._ttlClean.bind(this), this._ttlInterval);
     }
     return ele;

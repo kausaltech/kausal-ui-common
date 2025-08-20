@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import type { LoggerOptions as PinoLoggerOptions, WriteFn } from 'pino';
 import { pino } from 'pino';
 

@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 export const isServer = typeof window === 'undefined';
 export const isLocalDev = process.env.NODE_ENV === 'development';
 export const isEdgeRuntime = isServer && process.env.NEXT_RUNTIME === 'edge';

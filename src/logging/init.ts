@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import otel from '@opentelemetry/api';
 import type { LoggerOptions as PinoLoggerOptions, pino } from 'pino';
 

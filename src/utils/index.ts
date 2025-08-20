@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import type { IncomingMessage } from 'http';
 
 import {

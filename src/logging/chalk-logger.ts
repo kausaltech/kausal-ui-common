@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import type { ChalkInstance } from 'chalk';
 import type * as chalkModule from 'chalk';
 import dayjs from 'dayjs';

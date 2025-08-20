@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import type { ApolloLink, Operation } from '@apollo/client';
 import type { ApolloError } from '@apollo/client/errors/errors.cjs';
 import type { ErrorResponse } from '@apollo/client/link/error';
@@ -54,6 +55,7 @@ export function logApolloError(error: ApolloErrorLike, options?: ApolloErrorCont
   const clientErrors = 'clientErrors' in error ? error.clientErrors : undefined;
 
   if (networkError) {
+    console.dir(error, { depth: 2 });
     const extraContext: Bindings = {};
     if ('statusCode' in networkError) {
       extraContext['http.response.status_code'] = networkError.statusCode;
@@ -65,7 +67,6 @@ export function logApolloError(error: ApolloErrorLike, options?: ApolloErrorCont
     } else {
       logger.error(extraContext, `Network error: ${networkError.message}`);
     }
-    return;
   }
 
   if (clientErrors?.length) {

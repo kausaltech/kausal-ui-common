@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import type { IncomingHttpHeaders } from 'node:http';
 
 import { customAlphabet } from 'nanoid';

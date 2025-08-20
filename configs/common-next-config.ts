@@ -13,6 +13,8 @@ const isProd = process.env.NODE_ENV === 'production';
 const standaloneBuild = process.env.NEXTJS_STANDALONE_BUILD === '1';
 const prodAssetPrefix = isProd ? process.env.NEXTJS_ASSET_PREFIX : undefined;
 
+const isCoverageEnabled = process.env.CODE_COVERAGE === '1';
+
 export function getNextConfig(
   projectRoot: string,
   opts: { isPagesRouter?: boolean; cssInJsLibrary?: 'styled-components' | 'emotion' }
@@ -29,6 +31,7 @@ export function getNextConfig(
     typescript: {
       ignoreBuildErrors: true,
     },
+    distDir: isCoverageEnabled ? '.next-coverage' : undefined,
     productionBrowserSourceMaps: true,
     compiler: {
       // Enables the styled-components SWC transform
@@ -42,6 +45,24 @@ export function getNextConfig(
       optimizePackageImports: ['lodash'],
       // forceSwcTransforms: !envToBool(process.env.CODE_COVERAGE, false),
       // reactCompiler: true,
+      swcPlugins: isCoverageEnabled
+        ? [
+            [
+              'swc-plugin-coverage-instrument',
+              {
+                unstableExclude: [
+                  '**/kausal_common/src/env/*.ts',
+                  '**/kausal_common/src/logging/**',
+                  '**/node_modules/**',
+                  '**/node_modules/.pnpm/**',
+                  '**/src/instrumentation*',
+                  '**/src/middleware.ts',
+                  '**/src/utils/middleware.utils.ts',
+                ],
+              },
+            ],
+          ]
+        : undefined,
     },
     reactStrictMode: true,
     skipMiddlewareUrlNormalize: true,
@@ -108,19 +129,21 @@ export function getNextConfig(
           }
           return `webpack://${info.namespace}/${info.resourcePath}${loaders}`;
         };
-        const sbomComponent = isServer ? (isEdge ? 'edge' : 'node') : 'browser';
-        const webpackOutputPath = cfg.output!.path!;
-        const sbomOutputPath = `${context.dir}/public/static/sbom/${sbomComponent}`;
-        const buildVersion = (process.env.BUILD_ID || 'unknown').replaceAll('_', '-');
-        cfg.plugins.push(
-          new CycloneDxWebpackPlugin({
-            outputLocation: path.relative(webpackOutputPath, sbomOutputPath),
-            rootComponentVersion: `1.0.0-${buildVersion}`,
-            rootComponentAutodetect: false,
-            rootComponentName: `${getProjectIdFromPackageJson(context.dir)}-${sbomComponent}`,
-            includeWellknown: false,
-          })
-        );
+        if (!isCoverageEnabled) {
+          const sbomComponent = isServer ? (isEdge ? 'edge' : 'node') : 'browser';
+          const webpackOutputPath = cfg.output!.path!;
+          const sbomOutputPath = `${context.dir}/public/static/sbom/${sbomComponent}`;
+          const buildVersion = (process.env.BUILD_ID || 'unknown').replaceAll('_', '-');
+          cfg.plugins.push(
+            new CycloneDxWebpackPlugin({
+              outputLocation: path.relative(webpackOutputPath, sbomOutputPath),
+              rootComponentVersion: `1.0.0-${buildVersion}`,
+              rootComponentAutodetect: false,
+              rootComponentName: `${getProjectIdFromPackageJson(context.dir)}-${sbomComponent}`,
+              includeWellknown: false,
+            })
+          );
+        }
       }
       return cfg;
     },
