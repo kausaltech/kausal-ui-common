@@ -34,7 +34,7 @@ export function getEslintConfig(rootDir) {
 
   const config = ts.config(
     ...compat.extends('next/core-web-vitals', 'next/typescript'),
-    [globalIgnores(['**/__generated__/**', '.next/**', '.*/**', 'Attic/**'])],
+    [globalIgnores(['**/__generated__/**', '.next/**', '.*/**', 'Attic/**', 'next-env.d.ts'])],
     ...ts.configs.recommendedTypeChecked,
     {
       plugins: {
