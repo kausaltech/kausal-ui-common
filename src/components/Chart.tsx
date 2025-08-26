@@ -10,6 +10,7 @@ import {
   type PieSeriesOption,
 } from 'echarts/charts';
 import {
+  AriaComponent,
   DatasetComponent,
   type DatasetComponentOption,
   GraphicComponent,
@@ -27,7 +28,7 @@ import {
 import type { ComposeOption } from 'echarts/core';
 import * as echarts from 'echarts/core';
 import { LabelLayout, UniversalTransition } from 'echarts/features';
-import { CanvasRenderer } from 'echarts/renderers';
+import { SVGRenderer } from 'echarts/renderers';
 import throttle from 'lodash/throttle';
 
 import { useBaseTheme } from '@common/providers/CommonThemeProvider';
@@ -45,12 +46,13 @@ echarts.use([
   LegendComponent,
   LabelLayout,
   UniversalTransition,
-  CanvasRenderer,
+  SVGRenderer,
   GraphicComponent,
   LineChart,
   MarkLineComponent,
   MarkAreaComponent,
   PieChart,
+  AriaComponent,
 ]);
 
 // Hack to add margin on the chart to fit the legend
