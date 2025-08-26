@@ -28,7 +28,7 @@ import {
 import type { ComposeOption } from 'echarts/core';
 import * as echarts from 'echarts/core';
 import { LabelLayout, UniversalTransition } from 'echarts/features';
-import { SVGRenderer } from 'echarts/renderers';
+import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
 import throttle from 'lodash/throttle';
 
 import { useBaseTheme } from '@common/providers/CommonThemeProvider';
@@ -47,6 +47,7 @@ echarts.use([
   LabelLayout,
   UniversalTransition,
   SVGRenderer,
+  CanvasRenderer,
   GraphicComponent,
   LineChart,
   MarkLineComponent,
@@ -92,6 +93,7 @@ type Props = {
   className?: string;
   // Resize the legend when the chart loaded or resized, also adds additional space to the bottom of the chart
   withResizeLegend?: boolean;
+  renderer?: 'svg' | 'canvas';
 };
 
 export function Chart({
@@ -101,6 +103,7 @@ export function Chart({
   onZrClick,
   className,
   withResizeLegend = true,
+  renderer = 'canvas',
 }: Props) {
   const chartRef = useRef<echarts.ECharts | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -108,7 +111,9 @@ export function Chart({
 
   // Initialize the chart
   useEffect(() => {
-    const chart = echarts.init(wrapperRef.current, getChartTheme(theme).theme);
+    const chart = echarts.init(wrapperRef.current, getChartTheme(theme).theme, {
+      renderer: renderer,
+    });
 
     chartRef.current = chart;
 
