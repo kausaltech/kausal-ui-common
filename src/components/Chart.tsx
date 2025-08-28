@@ -10,6 +10,7 @@ import {
   type PieSeriesOption,
 } from 'echarts/charts';
 import {
+  AriaComponent,
   DatasetComponent,
   type DatasetComponentOption,
   GraphicComponent,
@@ -27,7 +28,7 @@ import {
 import type { ComposeOption } from 'echarts/core';
 import * as echarts from 'echarts/core';
 import { LabelLayout, UniversalTransition } from 'echarts/features';
-import { CanvasRenderer } from 'echarts/renderers';
+import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
 import throttle from 'lodash/throttle';
 
 import { useBaseTheme } from '@common/providers/CommonThemeProvider';
@@ -45,12 +46,14 @@ echarts.use([
   LegendComponent,
   LabelLayout,
   UniversalTransition,
+  SVGRenderer,
   CanvasRenderer,
   GraphicComponent,
   LineChart,
   MarkLineComponent,
   MarkAreaComponent,
   PieChart,
+  AriaComponent,
 ]);
 
 // Hack to add margin on the chart to fit the legend
@@ -90,6 +93,7 @@ type Props = {
   className?: string;
   // Resize the legend when the chart loaded or resized, also adds additional space to the bottom of the chart
   withResizeLegend?: boolean;
+  renderer?: 'svg' | 'canvas';
 };
 
 export function Chart({
@@ -99,6 +103,7 @@ export function Chart({
   onZrClick,
   className,
   withResizeLegend = true,
+  renderer = 'canvas',
 }: Props) {
   const chartRef = useRef<echarts.ECharts | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -106,7 +111,9 @@ export function Chart({
 
   // Initialize the chart
   useEffect(() => {
-    const chart = echarts.init(wrapperRef.current, getChartTheme(theme).theme);
+    const chart = echarts.init(wrapperRef.current, getChartTheme(theme).theme, {
+      renderer: renderer,
+    });
 
     chartRef.current = chart;
 
