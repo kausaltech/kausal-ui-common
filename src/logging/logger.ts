@@ -7,6 +7,7 @@ import { pino } from 'pino';
 
 import { REQUEST_CORRELATION_ID_HEADER } from '../constants/headers.mjs';
 import { envToBool } from '../env/utils';
+import { getKubernetesLogging } from '@common/env/runtime';
 
 export function getRootLogger() {
   return globalThis['__kausal_root_logger__'] as Logger | undefined;
@@ -30,7 +31,7 @@ export type LogRecord = {
 
 export function isPrettyLogger() {
   if (process.env.NODE_ENV === 'production') return false;
-  if (envToBool(process.env.KUBERNETES_LOGGING, false)) return false;
+  if (getKubernetesLogging()) return false;
   return true;
 }
 

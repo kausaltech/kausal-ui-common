@@ -38,6 +38,7 @@ export const PUBLIC_ENV_VARS: Record<string, keyof RuntimeConfig | undefined> = 
   SENTRY_TRACE_SAMPLE_RATE: 'sentryTraceSampleRate',
   SENTRY_SESSION_REPLAYS: undefined,
   BUILD_ID: 'buildId',
+  KUBERNETES_LOGGING: undefined,
   AUTH_ISSUER: undefined,
 };
 
@@ -133,6 +134,10 @@ export function getBuildId(): string {
   const envVal = env('BUILD_ID');
   if (envVal) return envVal;
   return 'dev';
+}
+
+export function getKubernetesLogging(): boolean {
+  return envToBool(env('KUBERNETES_LOGGING'), false);
 }
 
 export function getSentryRelease(): string {
