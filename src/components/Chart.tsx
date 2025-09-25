@@ -156,7 +156,7 @@ export function Chart({
   // Update the chart when the data changes
   useEffect(() => {
     if (chartRef.current && data) {
-      chartRef.current.setOption(data);
+      chartRef.current.setOption(data, true);
 
       if (withResizeLegend) {
         resizeLegend(chartRef.current);
