@@ -21,6 +21,7 @@ import {
 } from '@common/env/runtime';
 import { envToBool } from '@common/env/utils';
 import { getLogger } from '@common/logging/logger';
+import { initSentryCommon } from './common-init';
 
 function makeNullTransport(_options: BaseTransportOptions) {
   return Sentry.createTransport(
@@ -156,7 +157,7 @@ export function initSentryBrowser() {
       logSpanEvent(span, 'End');
     });
   }
-
+  initSentryCommon(client);
   /*
   if (false &&enableSpotlight) {
     initSpotlight = () => {

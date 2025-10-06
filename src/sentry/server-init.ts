@@ -36,6 +36,7 @@ import {
 import { envToBool } from '@common/env/utils';
 import { getLogger } from '@common/logging/logger';
 import { ensureTrailingSlash } from '@common/utils';
+import { initSentryCommon } from './common-init';
 
 const IGNORE_PATHS = [
   SENTRY_TUNNEL_PUBLIC_PATH,
@@ -331,5 +332,12 @@ export async function initSentry(): Promise<Client | undefined> {
     Sentry.init(getNodeOptions());
   }
   logger = getLogger('sentry');
-  return Sentry.getClient();
+
+  const client = Sentry.getClient();
+  if (!client) return;
+  initSentryCommon(client);
+  if (process.env.DEPLOYMENT_CLUSTER) {
+    Sentry.getGlobalScope().setTag('deployment.cluster', process.env.DEPLOYMENT_CLUSTER);
+  }
+  return client;
 }
