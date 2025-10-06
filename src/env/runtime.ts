@@ -33,6 +33,7 @@ export const PUBLIC_ENV_VARS: Record<string, keyof RuntimeConfig | undefined> = 
   WATCH_BACKEND_URL: undefined,
   PATHS_BACKEND_URL: undefined,
   DEPLOYMENT_TYPE: 'deploymentType',
+  DEPLOYMENT_REGION: 'deploymentRegion',
   WILDCARD_DOMAINS: 'wildcardDomains',
   SENTRY_DSN: 'sentryDsn',
   SENTRY_TRACE_SAMPLE_RATE: 'sentryTraceSampleRate',
@@ -45,6 +46,7 @@ export const PUBLIC_ENV_VARS: Record<string, keyof RuntimeConfig | undefined> = 
 type RuntimeConfig = {
   isServer: boolean;
   deploymentType: DeploymentType;
+  deploymentRegion?: string;
   isLocalDev: boolean;
   buildId: string;
   apiUrl: string;
@@ -87,6 +89,10 @@ export function getDeploymentType(): DeploymentType {
 
 export function isProductionDeployment() {
   return getDeploymentType() === 'production';
+}
+
+export function getDeploymentRegion(): string | undefined {
+  return env('DEPLOYMENT_REGION');
 }
 
 export function getWatchBackendUrl() {
@@ -199,6 +205,7 @@ export function getRuntimeConfig() {
     isLocalDev: isLocalDev,
     buildId: getBuildId(),
     deploymentType: getDeploymentType(),
+    deploymentRegion: getDeploymentRegion(),
     apiUrl: projectId === 'watch-ui' ? getWatchBackendUrl() : getPathsBackendUrl(),
     gqlUrl: projectId === 'watch-ui' ? getWatchGraphQLUrl() : getPathsGraphQLUrl(),
     wildcardDomains: getWildcardDomains(),
