@@ -8,7 +8,7 @@ import { WINDOW_PUBLIC_ENV_KEY, getPublicEnv } from './runtime';
 
 export function getPublicEnvAsMetaComponents() {
   const nodes = Object.entries(getPublicEnv()).map(([name, value]) =>
-    React.createElement('meta', { name: 'env', content: `${name}=${value}` })
+    React.createElement('meta', { key: name, name: 'env', content: `${name}=${value}` })
   );
   return nodes;
 }
