@@ -1,6 +1,7 @@
 // @ts-check
 import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
+import graphqlPlugin from '@graphql-eslint/eslint-plugin';
 import reactCompiler from 'eslint-plugin-react-compiler';
 import { globalIgnores } from 'eslint/config';
 import ts from 'typescript-eslint';
@@ -8,9 +9,9 @@ import ts from 'typescript-eslint';
 /**
  *
  * @param {string} rootDir
- * @returns {import('@typescript-eslint/utils').TSESLint.FlatConfig.ConfigArray}
+ * @returns {Promise<import('@typescript-eslint/utils').TSESLint.FlatConfig.ConfigArray>}
  */
-export function getEslintConfig(rootDir) {
+export async function getEslintConfig(rootDir) {
   const compat = new FlatCompat({
     baseDirectory: rootDir,
     recommendedConfig: js.configs.recommended,
@@ -32,13 +33,70 @@ export function getEslintConfig(rootDir) {
     };
   }
 
+  const JS_EXTS = '@(ts|tsx|js|jsx|mjs|cjs)';
+
+  function allExtsForPath(path) {
+    return `${path}/*.${JS_EXTS}`;
+  }
+
+  function getJsFiles() {
+    const files = [];
+    files.push(allExtsForPath('.'));
+    files.push(allExtsForPath('src/**'));
+    files.push(allExtsForPath('e2e-tests/**'));
+    files.push(allExtsForPath('kausal_common/**'));
+    if (storybookConfigs.length > 0) {
+      files.push(allExtsForPath('stories/**'));
+    }
+    return files;
+  }
+
+  let storybookConfigs = [];
+  try {
+    const storybookPlugin = (await import('eslint-plugin-storybook')).default;
+    storybookConfigs.push(
+      ts.config({
+        files: [allExtsForPath('stories/**')],
+        extends: storybookPlugin.configs['flat/recommended'],
+      })
+    );
+  } catch (e) {}
+
+  const nextConfig = compat.extends('next/core-web-vitals', 'next/typescript');
+  const ignores = globalIgnores([
+    'node_modules/**',
+    '**/__generated__/**',
+    'load-tests/**',
+    'kausal_common/scripts/*.js',
+    '.next/**',
+    '.*/**',
+    'Attic/**',
+    'next-env.d.ts',
+  ]);
   const config = ts.config(
-    ...compat.extends('next/core-web-vitals', 'next/typescript'),
-    [globalIgnores(['**/__generated__/**', '.next/**', '.*/**', 'Attic/**', 'next-env.d.ts'])],
-    ...ts.configs.recommendedTypeChecked,
+    ignores,
     {
+      files: ['src/**/*.graphql'],
+      languageOptions: {
+        parser: graphqlPlugin.parser,
+      },
+      rules: graphqlPlugin.configs['flat/operations-recommended'].rules,
+      plugins: {
+        '@graphql-eslint': graphqlPlugin,
+      },
+    },
+    ...storybookConfigs,
+    {
+      files: getJsFiles(),
+      extends: [nextConfig, ts.configs.recommendedTypeChecked],
       plugins: {
         'react-compiler': reactCompiler,
+      },
+      languageOptions: {
+        parserOptions: {
+          projectService: true,
+          tsconfigRootDir: rootDir,
+        },
       },
       rules: {
         'no-unused-vars': 'off',
@@ -59,11 +117,32 @@ export function getEslintConfig(rootDir) {
         '@typescript-eslint/ban-ts-comment': 'warn',
         'react-compiler/react-compiler': 'error',
       },
+    },
+    {
+      files: [allExtsForPath('e2e-tests/**')],
       languageOptions: {
         parserOptions: {
-          projectService: true,
-          tsconfigRootDir: rootDir,
+          projectService: {
+            defaultProject: 'e2e-tests/tsconfig.json',
+          },
         },
+      },
+    },
+    {
+      files: [allExtsForPath('stories/**')],
+      languageOptions: {
+        parserOptions: {
+          projectService: {
+            defaultProject: 'stories/tsconfig.json',
+          },
+        },
+      },
+    },
+    {
+      files: [allExtsForPath('src/**')],
+      processor: graphqlPlugin.processor,
+      plugins: {
+        '@graphql-eslint': graphqlPlugin,
       },
     }
   );

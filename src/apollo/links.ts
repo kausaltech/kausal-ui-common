@@ -102,6 +102,18 @@ export const createSentryLink = (uri: string) => {
         ...attrs,
       },
     };
+    Sentry.addBreadcrumb({
+      category: 'graphql',
+      message: `Starting GraphQL operation ${operation.operationName}`,
+      level: 'info',
+      data: {
+        'operation.name': operation.operationName,
+        'operation.type': opType,
+        'originator': context.componentName,
+        uri,
+        variables: operation.variables,
+      },
+    })
     return Sentry.startSpanManual(spanOpts, (span, finish) => {
       if (isLocalDev) {
         span.setAttribute('graphql.document', operation.query.loc?.source.body ?? '<unknown>');
