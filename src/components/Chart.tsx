@@ -85,6 +85,12 @@ export type ECOption = ComposeOption<
   | DatasetComponentOption
 >;
 
+const DEFAULT_STYLES: ECOption = {
+  textStyle: {
+    fontFamily: 'system-ui, sans-serif', // Force consistent font across platforms
+  },
+};
+
 type Props = {
   isLoading: boolean;
   data?: echarts.EChartsCoreOption;
@@ -156,7 +162,11 @@ export function Chart({
   // Update the chart when the data changes
   useEffect(() => {
     if (chartRef.current && data) {
-      chartRef.current.setOption(data, true);
+      const augmentedData = {
+        ...data,
+        ...DEFAULT_STYLES,
+      };
+      chartRef.current.setOption(augmentedData, true);
 
       if (withResizeLegend) {
         resizeLegend(chartRef.current);
