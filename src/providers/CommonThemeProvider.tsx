@@ -1,3 +1,5 @@
+'use client';
+
 import React, { type ReactNode, createContext, useContext } from 'react';
 
 import type { Theme as BaseTheme } from '@kausal/themes/types';
