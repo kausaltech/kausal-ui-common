@@ -5,9 +5,9 @@ import { customAlphabet } from 'nanoid';
 import type { Bindings, Level, Logger } from 'pino';
 import { pino } from 'pino';
 
-import { REQUEST_CORRELATION_ID_HEADER } from '../constants/headers.mjs';
-import { envToBool } from '../env/utils';
 import { getKubernetesLogging } from '@common/env/runtime';
+
+import { REQUEST_CORRELATION_ID_HEADER } from '../constants/headers.mjs';
 
 export function getRootLogger() {
   return globalThis['__kausal_root_logger__'] as Logger | undefined;

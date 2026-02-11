@@ -9,9 +9,9 @@ import ts from 'typescript-eslint';
 /**
  *
  * @param {string} rootDir
- * @returns {Promise<import('@typescript-eslint/utils').TSESLint.FlatConfig.ConfigArray>}
+ * @returns {import('@typescript-eslint/utils').TSESLint.FlatConfig.ConfigArray}
  */
-export async function getEslintConfig(rootDir) {
+export function getEslintConfig(rootDir) {
   const compat = new FlatCompat({
     baseDirectory: rootDir,
     recommendedConfig: js.configs.recommended,
@@ -45,22 +45,8 @@ export async function getEslintConfig(rootDir) {
     files.push(allExtsForPath('src/**'));
     files.push(allExtsForPath('e2e-tests/**'));
     files.push(allExtsForPath('kausal_common/**'));
-    if (storybookConfigs.length > 0) {
-      files.push(allExtsForPath('stories/**'));
-    }
     return files;
   }
-
-  let storybookConfigs = [];
-  try {
-    const storybookPlugin = (await import('eslint-plugin-storybook')).default;
-    storybookConfigs.push(
-      ts.config({
-        files: [allExtsForPath('stories/**')],
-        extends: storybookPlugin.configs['flat/recommended'],
-      })
-    );
-  } catch (e) {}
 
   const nextConfig = compat.extends('next/core-web-vitals', 'next/typescript');
   const ignores = globalIgnores([
@@ -85,7 +71,6 @@ export async function getEslintConfig(rootDir) {
         '@graphql-eslint': graphqlPlugin,
       },
     },
-    ...storybookConfigs,
     {
       files: getJsFiles(),
       extends: [nextConfig, ts.configs.recommendedTypeChecked],

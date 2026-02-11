@@ -12,7 +12,7 @@ export async function loadTheme(themeIdentifier: string): Promise<Theme> {
     const fs = await import('node:fs');
     const THEME_PATH = './public/static/themes';
     readThemeFile = async (id: string) => {
-      const theme = fs.readFileSync(`${THEME_PATH}/${id}/theme.json`, {
+      const theme = await fs.promises.readFile(`${THEME_PATH}/${id}/theme.json`, {
         encoding: 'utf8',
       });
       return JSON.parse(theme) as Theme;
@@ -20,7 +20,7 @@ export async function loadTheme(themeIdentifier: string): Promise<Theme> {
   } else {
     const THEME_PATH = '/public/static/themes';
     readThemeFile = async (id: string) => {
-      const theme = await import(`${THEME_PATH}/${id}/theme.json`);
+      const theme = (await import(`${THEME_PATH}/${id}/theme.json`)) as { default: Theme };
       return theme.default;
     };
   }
