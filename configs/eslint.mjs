@@ -9,9 +9,9 @@ import ts from 'typescript-eslint';
 /**
  *
  * @param {string} rootDir
- * @returns {import('@typescript-eslint/utils').TSESLint.FlatConfig.ConfigArray}
+ * @returns {Promise<import('@typescript-eslint/utils').TSESLint.FlatConfig.ConfigArray>}
  */
-export function getEslintConfig(rootDir) {
+export async function getEslintConfig(rootDir) {
   const compat = new FlatCompat({
     baseDirectory: rootDir,
     recommendedConfig: js.configs.recommended,
@@ -45,8 +45,25 @@ export function getEslintConfig(rootDir) {
     files.push(allExtsForPath('src/**'));
     files.push(allExtsForPath('e2e-tests/**'));
     files.push(allExtsForPath('kausal_common/**'));
+    if (storybookConfigs.length > 0) {
+      files.push(allExtsForPath('stories/**'));
+    }
     return files;
   }
+
+  const storybookConfigs = [];
+  try {
+    // @ts-expect-error - optional dependency, not installed in all consuming projects
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const storybookPlugin = (await import('eslint-plugin-storybook')).default;
+    storybookConfigs.push(
+      ts.config({
+        files: [allExtsForPath('stories/**')],
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        extends: storybookPlugin.configs['flat/recommended'],
+      })
+    );
+  } catch (_e) {}
 
   const nextConfig = compat.extends('next/core-web-vitals', 'next/typescript');
   const ignores = globalIgnores([
@@ -71,6 +88,7 @@ export function getEslintConfig(rootDir) {
         '@graphql-eslint': graphqlPlugin,
       },
     },
+    ...storybookConfigs,
     {
       files: getJsFiles(),
       extends: [nextConfig, ts.configs.recommendedTypeChecked],
