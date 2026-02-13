@@ -3,7 +3,7 @@ import type { Font, Style } from 'exceljs';
 
 import { createTable } from './table';
 import { flatten, sliceBy } from './slicing';
-import type { ExportOptions, ParsedMetric, SliceConfig, TableData } from './types';
+import type { ExportOptions, MetricSliceData, ParsedMetric, SliceConfig, TableData } from './types';
 
 /**
  * Convert text to a URL-friendly slug.
@@ -170,7 +170,7 @@ export async function downloadData(
   const { years, tableTitle, labels } = options ?? {};
 
   // Get sliced data
-  let sliceData;
+  let sliceData: MetricSliceData | null;
   if (config.dimensionId) {
     sliceData = sliceBy(metric, config.dimensionId, false, config.categories, false, years);
   } else {

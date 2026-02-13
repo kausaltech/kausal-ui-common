@@ -29,7 +29,7 @@ import type { ComposeOption } from 'echarts/core';
 import * as echarts from 'echarts/core';
 import { LabelLayout, UniversalTransition } from 'echarts/features';
 import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
-import throttle from 'lodash/throttle';
+import throttle from 'lodash-es/throttle';
 
 import { useBaseTheme } from '@common/providers/CommonThemeProvider';
 
@@ -146,7 +146,7 @@ export function Chart({
       chart.clear();
       chart.dispose();
     };
-  }, [theme, withResizeLegend]);
+  }, [theme, withResizeLegend, renderer]);
 
   // Show/hide the loading indicator
   useEffect(() => {

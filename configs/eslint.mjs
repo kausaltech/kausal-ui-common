@@ -51,16 +51,19 @@ export async function getEslintConfig(rootDir) {
     return files;
   }
 
-  let storybookConfigs = [];
+  const storybookConfigs = [];
   try {
+    // @ts-expect-error - optional dependency, not installed in all consuming projects
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const storybookPlugin = (await import('eslint-plugin-storybook')).default;
     storybookConfigs.push(
       ts.config({
         files: [allExtsForPath('stories/**')],
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         extends: storybookPlugin.configs['flat/recommended'],
       })
     );
-  } catch (e) {}
+  } catch (_e) {}
 
   const nextConfig = compat.extends('next/core-web-vitals', 'next/typescript');
   const ignores = globalIgnores([

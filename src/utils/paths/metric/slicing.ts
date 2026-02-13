@@ -278,7 +278,7 @@ export function getSingleYear(
   // Get all used dimensions and their categories/groups
   const categoryTypes = metric.dimensions.map((dim) => ({
     id: dim.id,
-    type: (dim.groups.length ? 'group' : 'category') as 'group' | 'category',
+    type: (dim.groups.length ? 'group' : 'category'),
     options: dim.groups.length
       ? [...new Set(yearRows.map((row) => row.dimCats[dim.id].group!))]
       : [...new Set(yearRows.map((row) => row.dimCats[dim.id].id))],
