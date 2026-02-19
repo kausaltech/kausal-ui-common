@@ -41,7 +41,11 @@ const ContentLoader = ({
   }
 
   return (
-    <Loader aria-busy="true" style={{ height: fullPage ? 'calc(100vh - 24rem)' : '3rem' }}>
+    <Loader
+      aria-busy="true"
+      style={{ height: fullPage ? 'calc(100vh - 24rem)' : '3rem' }}
+      role="progressbar"
+    >
       <KausalProgressDots />
       <div className="visually-hidden">{message}</div>
     </Loader>
