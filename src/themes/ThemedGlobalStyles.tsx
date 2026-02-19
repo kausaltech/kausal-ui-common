@@ -259,7 +259,6 @@ const getGlobalStyles = (theme: Theme) => css`
 function ThemedGlobalStyles() {
   const theme = useTheme();
   const globalStyles = useMemo(() => getGlobalStyles(theme), [theme]);
-  console.log('Applying global styles with theme', theme, globalStyles);
   return <Global styles={globalStyles} />;
 }
 
