@@ -1,5 +1,7 @@
 import type { Theme } from '@kausal/themes/types';
-import type { ThemeOptions } from '@mui/material/styles';
+import type { ComponentNameToClassKey, ComponentsProps, ThemeOptions } from '@mui/material/styles';
+
+type StyleOverrides<Name extends keyof ComponentNameToClassKey> = NonNullable<NonNullable<ComponentsProps[Name]>['style']>;
 
 export function getComponents(theme: Theme): ThemeOptions['components'] {
   return {
@@ -13,7 +15,7 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
               paddingLeft: theme.spaces.s200,
               paddingRight: theme.spaces.s200,
             },
-          },
+          } satisfies StyleOverrides<'MuiContainer'>,
         }),
       },
     },
@@ -33,10 +35,10 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           boxShadow: 'none',
           '&:hover': {
             boxShadow: 'none',
-          },
+          } satisfies StyleOverrides<'MuiSelect'>,
           '&:focus': {
             boxShadow: `0 0 0 0.25rem ${theme.inputBtnFocusColor}`,
-          },
+          } satisfies StyleOverrides<'MuiButton'>,
         },
         sizeSmall: {
           lineHeight: theme.lineHeightSm,
@@ -44,12 +46,12 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
         contained: {
           '&:hover': {
             boxShadow: 'none',
-          },
+          } satisfies StyleOverrides<'MuiButton'>,
         },
         outlined: {
           '&:hover': {
             boxShadow: 'none',
-          },
+          } satisfies StyleOverrides<'MuiButton'>,
         },
       },
       defaultProps: {
@@ -73,11 +75,11 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           borderRadius: theme.inputBorderRadius,
           '&:hover': {
             borderColor: theme.themeColors.dark,
-          },
+          } satisfies StyleOverrides<'MuiInputBase'>,
           '&.Mui-focused': {
             borderColor: theme.inputBtnFocusColor,
             boxShadow: `0 0 0 0.25rem ${theme.inputBtnFocusColor}`,
-          },
+          } satisfies StyleOverrides<'MuiInputBase'>,
         },
       },
     },
@@ -89,10 +91,10 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
             backgroundColor: theme.inputBg,
             borderRadius: theme.inputBorderRadius,
             border: 0,
-          },
+          } satisfies StyleOverrides<'MuiTextField'>,
           '& .MuiInputLabel-root': {
             fontWeight: theme.formLabelFontWeight,
-          },
+          } satisfies StyleOverrides<'MuiTextField'>,
         },
       },
     },
@@ -104,15 +106,12 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           border: 0,
           '&:hover': {
             borderColor: theme.graphColors.grey050,
-          },
+          } satisfies StyleOverrides<'MuiSelect'>,
           '&.Mui-focused': {
             borderColor: theme.inputBtnFocusColor,
             boxShadow: `0 0 0 0.25rem ${theme.inputBtnFocusColor}`,
-          },
+          } satisfies StyleOverrides<'MuiSelect'>,
         },
-      },
-      defaultProps: {
-        disableUnderline: true,
       },
     },
     MuiChip: {
@@ -125,7 +124,7 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
 
           '&.MuiChip-sizeSmall': {
             height: 20,
-          },
+          } satisfies StyleOverrides<'MuiChip'>,
         },
       },
     },
@@ -142,10 +141,10 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
         root: {
           '& .MuiTableHead-root': {
             backgroundColor: theme.tableHeadBg,
-          },
+          } satisfies StyleOverrides<'MuiTable'>,
           '& .MuiTableRow-root:hover': {
             backgroundColor: theme.tableHoverBg,
-          },
+          } satisfies StyleOverrides<'MuiTable'>,
         },
       },
     },
@@ -157,7 +156,7 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           '&:hover': {
             color: theme.linkColor,
             textDecoration: 'underline',
-          },
+          } satisfies StyleOverrides<'MuiLink'>,
         },
       },
     },

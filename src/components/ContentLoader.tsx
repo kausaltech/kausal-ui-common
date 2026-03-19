@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import styled from '@emotion/styled';
+import styled from '@common/themes/styled';
 
 import { KausalProgressDots } from '@common/components/Loader';
 

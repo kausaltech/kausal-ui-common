@@ -18,8 +18,8 @@ export async function forwardToSentry(
   }
   const envelope = new TextDecoder().decode(envelopeBytes);
   const [rawHeader, ...otherPieces] = envelope.split('\n');
-  const header = JSON.parse(rawHeader) as object;
-  const dsn = new URL(header['dsn'] as string);
+  const header = JSON.parse(rawHeader) as Record<string, string>;
+  const dsn = new URL(header['dsn']);
   const projectId = dsn.pathname?.replace('/', '');
 
   if (dsn.hostname !== sentryDsn.hostname) {

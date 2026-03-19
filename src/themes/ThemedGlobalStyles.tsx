@@ -2,8 +2,10 @@
 
 import React, { useMemo } from 'react';
 
-import { Global, css, useTheme } from '@emotion/react';
+import { Global, css } from '@emotion/react';
 import type { Theme } from '@emotion/react';
+
+import { useTheme } from '@common/themes';
 
 const getGlobalStyles = (theme: Theme) => css`
   html {
@@ -148,7 +150,7 @@ const getGlobalStyles = (theme: Theme) => css`
       margin-bottom: ${theme.spaces.s050};
       font-size: ${theme.fontSizeBase};
 
-      &:first-child {
+      &:first-of-type {
         margin-top: 0;
       }
     }
