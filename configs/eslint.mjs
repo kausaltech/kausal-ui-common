@@ -1,10 +1,50 @@
 // @ts-check
-import { FlatCompat } from '@eslint/eslintrc';
-import js from '@eslint/js';
+import jsEslint from '@eslint/js';
 import graphqlPlugin from '@graphql-eslint/eslint-plugin';
-import reactCompiler from 'eslint-plugin-react-compiler';
-import { globalIgnores } from 'eslint/config';
-import ts from 'typescript-eslint';
+// @ts-expect-error - weird import problems
+import nextEslintConfigModule from 'eslint-config-next/core-web-vitals';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import tsEslint from 'typescript-eslint';
+
+const JS_EXTS = '@(ts|tsx|js|jsx|mjs|cjs)';
+
+/** @type {import('eslint-config-next/dist/core-web-vitals')} */
+const nextEslintConfig = nextEslintConfigModule;
+
+/**
+ * @param {string} path
+ * @param {string} exts
+ * @returns {string}
+ */
+function allExtsForPath(path, exts = JS_EXTS) {
+  if (!path) return `*.${exts}`;
+  return `${path}/*.${exts}`;
+}
+
+function getNextEslintConfig() {
+  /** @type {import('eslint/config').Config[]} */
+  const nextConfig = defineConfig({
+    name: 'ts',
+    extends: [
+      { name: jsEslint.meta.name, rules: jsEslint.configs.recommended.rules },
+      tsEslint.configs.recommendedTypeChecked,
+      react.configs.flat.recommended,
+      reactHooks.configs.flat['recommended-latest'],
+      nextEslintConfig,
+    ],
+    settings: {
+      react: {
+        version: '19',
+      },
+    },
+    languageOptions: {
+      parser: tsEslint.parser,
+    },
+  });
+  return nextConfig;
+}
 
 /**
  *
@@ -12,12 +52,6 @@ import ts from 'typescript-eslint';
  * @returns {Promise<import('@typescript-eslint/utils').TSESLint.FlatConfig.ConfigArray>}
  */
 export async function getEslintConfig(rootDir) {
-  const compat = new FlatCompat({
-    baseDirectory: rootDir,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all,
-  });
-
   /**
    * @param {'warn' | 'error'} level
    * @returns {Record<string, 'warn' | 'error'>}
@@ -33,20 +67,19 @@ export async function getEslintConfig(rootDir) {
     };
   }
 
-  const JS_EXTS = '@(ts|tsx|js|jsx|mjs|cjs)';
-
-  function allExtsForPath(path) {
-    return `${path}/*.${JS_EXTS}`;
-  }
-
-  function getJsFiles() {
+  /**
+   * @param {string} exts
+   * @returns {string[]}
+   */
+  function getJsFiles(exts = JS_EXTS) {
     const files = [];
-    files.push(allExtsForPath('.'));
-    files.push(allExtsForPath('src/**'));
-    files.push(allExtsForPath('e2e-tests/**'));
-    files.push(allExtsForPath('kausal_common/**'));
+    files.push(allExtsForPath('', exts));
+    files.push(allExtsForPath('src/**', exts));
+    files.push(allExtsForPath('e2e-tests/**', exts));
+    files.push(allExtsForPath('kausal_common/src/**', exts));
+    files.push(allExtsForPath('kausal_common/e2e-tests/**', exts));
     if (storybookConfigs.length > 0) {
-      files.push(allExtsForPath('stories/**'));
+      files.push(allExtsForPath('stories/**', exts));
     }
     return files;
   }
@@ -57,44 +90,52 @@ export async function getEslintConfig(rootDir) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const storybookPlugin = (await import('eslint-plugin-storybook')).default;
     storybookConfigs.push(
-      ts.config({
+      defineConfig({
+        name: 'storybook',
         files: [allExtsForPath('stories/**')],
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         extends: storybookPlugin.configs['flat/recommended'],
       })
     );
-  } catch (_e) {}
+  } catch (_e) {
+    console.log('No storybook plugin found');
+  }
 
-  const nextConfig = compat.extends('next/core-web-vitals', 'next/typescript');
+  const nextConfig = getNextEslintConfig();
+
   const ignores = globalIgnores([
     'node_modules/**',
+    '**/node_modules/**',
     '**/__generated__/**',
     'load-tests/**',
     'kausal_common/scripts/*.js',
     '.next/**',
+    'out/**',
+    'build/**',
+    '**/playwright-report/**',
     '.*/**',
     'Attic/**',
     'next-env.d.ts',
   ]);
-  const config = ts.config(
+  const config = defineConfig(
     ignores,
     {
+      name: 'graphql-only',
       files: ['src/**/*.graphql'],
       languageOptions: {
         parser: graphqlPlugin.parser,
       },
       rules: graphqlPlugin.configs['flat/operations-recommended'].rules,
       plugins: {
+        // @ts-expect-error - some slight type incompatibilities
         '@graphql-eslint': graphqlPlugin,
       },
     },
     ...storybookConfigs,
     {
+      name: 'main',
       files: getJsFiles(),
-      extends: [nextConfig, ts.configs.recommendedTypeChecked],
-      plugins: {
-        'react-compiler': reactCompiler,
-      },
+      extends: [nextConfig],
       languageOptions: {
         parserOptions: {
           projectService: true,
@@ -102,6 +143,7 @@ export async function getEslintConfig(rootDir) {
         },
       },
       rules: {
+        'no-prototype-builtins': 'off',
         'no-unused-vars': 'off',
         '@typescript-eslint/no-unused-vars': [
           'warn',
@@ -112,17 +154,30 @@ export async function getEslintConfig(rootDir) {
             destructuredArrayIgnorePattern: '^_',
             varsIgnorePattern: '^_',
             ignoreRestSiblings: true,
+            enableAutofixRemoval: {
+              imports: true,
+            },
           },
         ],
         'react/no-unescaped-entities': ['error', { forbid: ['>', '}'] }],
         ...getAnyRules('error'),
         '@typescript-eslint/no-require-imports': 'off',
         '@typescript-eslint/ban-ts-comment': 'warn',
-        'react-compiler/react-compiler': 'error',
+        '@typescript-eslint/no-deprecated': 'warn',
       },
     },
     {
-      files: [allExtsForPath('e2e-tests/**')],
+      name: 'kausal_common-tsconfig',
+      files: [allExtsForPath('kausal_common/src/**')],
+      languageOptions: {
+        parserOptions: {
+          tsconfigRootDir: `${rootDir}/kausal_common`,
+        },
+      },
+    },
+    {
+      name: 'e2e-tests-tsconfig',
+      files: [allExtsForPath('e2e-tests/**'), allExtsForPath('kausal_common/e2e-tests/**')],
       languageOptions: {
         parserOptions: {
           projectService: {
@@ -130,8 +185,12 @@ export async function getEslintConfig(rootDir) {
           },
         },
       },
+      rules: {
+        'react-hooks/rules-of-hooks': 'off',
+      },
     },
     {
+      name: 'storybook-tsconfig',
       files: [allExtsForPath('stories/**')],
       languageOptions: {
         parserOptions: {
@@ -142,6 +201,7 @@ export async function getEslintConfig(rootDir) {
       },
     },
     {
+      name: 'graphql-eslint',
       files: [allExtsForPath('src/**')],
       processor: graphqlPlugin.processor,
       plugins: {

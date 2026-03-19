@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { useReactiveVar } from '@apollo/client';
-import { useTheme } from '@emotion/react';
-import type { DimensionalNodeMetricFragment } from '@generated/paths/graphql';
 import { Box } from '@mui/material';
+
+import { useReactiveVar } from '@apollo/client/react';
+import type { DimensionalNodeMetricFragment } from '@generated/paths/graphql';
 import chroma from 'chroma-js';
 import { useLocale } from 'next-intl';
 
 import { activeGoalVar } from '@common/apollo/paths-cache';
 import type { TFunction } from '@common/i18n';
+import { useTheme } from '@common/themes';
 import { formatWithFormatter, makeFormatter } from '@common/utils/format';
 import { genColorsFromTheme, setUniqueColors } from '@common/utils/paths/colors';
 import {

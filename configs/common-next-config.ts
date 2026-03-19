@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -6,7 +5,7 @@ import { CycloneDxWebpackPlugin } from '@cyclonedx/webpack-plugin';
 import type { NextConfig } from 'next';
 import type * as Webpack from 'webpack';
 
-import { getProjectIdFromPackageJson } from '../src/env/project.cjs';
+import { getProjectIdFromPackageJson } from '../src/env/project';
 import { getSentryWebpackDefines } from '../src/sentry/sentry-next-config';
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -19,21 +18,49 @@ export function getNextConfig(projectRoot: string): NextConfig {
   const config: NextConfig = {
     assetPrefix: prodAssetPrefix,
     output: standaloneBuild ? 'standalone' : undefined,
-    eslint: {
-      ignoreDuringBuilds: true,
-    },
     typescript: {
       ignoreBuildErrors: true,
     },
     distDir: isCoverageEnabled ? '.next-coverage' : undefined,
     productionBrowserSourceMaps: true,
     compiler: {
-      emotion: true,
+      emotion: {
+        autoLabel: 'always',
+        labelFormat: '[filename]-[local]',
+        importMap: {
+          '@mui/system': {
+            styled: {
+              canonicalImport: ['@emotion/styled', 'default'],
+              styledBaseImport: ['@mui/system', 'styled'],
+            },
+          },
+          '@mui/material/styles': {
+            styled: {
+              canonicalImport: ['@emotion/styled', 'default'],
+              styledBaseImport: ['@mui/material/styles', 'styled'],
+            },
+          },
+          '@mui/material': {
+            styled: {
+              canonicalImport: ['@emotion/styled', 'default'],
+              styledBaseImport: ['@mui/material', 'styled'],
+            },
+          },
+          '@common/themes/styled': {
+            styled: {
+              canonicalImport: ['@emotion/styled', 'default'],
+              styledBaseImport: ['@common/themes/styled', 'styled'],
+            },
+          }
+        },
+      },
       define: {
         ...getCommonDefines(projectRoot, false),
       },
     },
     experimental: {
+      serverMinification: false,
+      serverSourceMaps: true,
       optimizePackageImports: ['lodash'],
       // forceSwcTransforms: !envToBool(process.env.CODE_COVERAGE, false),
       // reactCompiler: true,
@@ -57,7 +84,14 @@ export function getNextConfig(projectRoot: string): NextConfig {
         : undefined,
     },
     reactStrictMode: true,
-    skipMiddlewareUrlNormalize: true,
+    skipProxyUrlNormalize: true,
+    // Bundle all node_modules for server-side Pages Router (like App Router).
+    // Without this, Turbopack externalizes most packages but @mui/material
+    // is force-bundled (via optimizePackageImports), pulling in its own
+    // inline copy of @emotion/react. The app code's externalized emotion
+    // creates a separate EmotionCacheContext, causing css-/mui- class
+    // prefix mismatch and hydration errors.
+    bundlePagesRouterDependencies: true,
     serverExternalPackages: ['pino'],
     outputFileTracingIncludes: standaloneBuild
       ? { '/': ['./node_modules/@kausal*/themes*/**'] }
