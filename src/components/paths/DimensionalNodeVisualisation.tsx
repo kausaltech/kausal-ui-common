@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useReactiveVar } from '@apollo/client';
-import { useTheme } from '@emotion/react';
+import { useTheme } from '@common/themes';
 import { Box } from '@mui/material';
 import chroma from 'chroma-js';
 

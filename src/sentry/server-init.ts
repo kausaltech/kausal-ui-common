@@ -70,11 +70,13 @@ const edgeSpotlightIntegration: IntegrationFn = (options: { url: string }) => {
     if (nrErrors > 5) {
       return;
     }
+
     fetch(options.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-sentry-envelope',
       },
+      // @ts-expect-error - serializedEnvelope is a string or Uint8Array
       body: serializedEnvelope,
     }).catch((reason: Error) => {
       nrErrors++;
@@ -201,15 +203,13 @@ const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
 
 type HttpIntegrationOptions = Parameters<typeof httpIntegration>[0];
 type HttpInstrumentationOptions = NonNullable<
-  NonNullable<HttpIntegrationOptions>['instrumentation']
->['_experimentalConfig'];
+  NonNullable<HttpIntegrationOptions>
+>
 
 export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
   const logger = getLogger('http-instrumentation', { noSpan: true });
   const options: HttpInstrumentationOptions = {
-    enabled: true,
-    ignoreIncomingRequestHook(request) {
-      const urlPath = request.url?.split('?')[0] ?? '';
+    ignoreIncomingRequests(urlPath, _request) {
       if (IGNORE_PATHS.some((path) => urlPath === path)) {
         return true;
       }
@@ -221,7 +221,7 @@ export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
       }
       return false;
     },
-    ignoreOutgoingRequestHook(request) {
+    ignoreOutgoingRequests(url, request) {
       const spotlightUrl = getSpotlightUrl();
       if (spotlightUrl) {
         // Something weird is going on with the url argument, so we'll use
@@ -237,34 +237,36 @@ export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
       }
       return false;
     },
-    requestHook: (span: Span, request) => {
-      if (!('headers' in request)) {
-        return;
-      }
-      const { headers } = request;
-      const existingPropagationHeaders = propagation
-        .fields()
-        .filter((header) => header.toLowerCase() in headers)
-        .map((header) => [header, headers[header.toLowerCase()]]);
-      if (existingPropagationHeaders.length > 0) {
+    instrumentation: {
+      requestHook: (span: Span, request) => {
+        if (!('headers' in request)) {
+          return;
+        }
+        const { headers } = request;
+        const existingPropagationHeaders = propagation
+          .fields()
+          .filter((header) => header.toLowerCase() in headers)
+          .map((header) => [header, headers[header.toLowerCase()]]);
+        if (existingPropagationHeaders.length > 0) {
+          if (otelDebug) {
+            logger.info(
+              { ...Object.fromEntries(existingPropagationHeaders) },
+              'propagation headers already present, skipping'
+            );
+          }
+          return;
+        }
         if (otelDebug) {
+          const span = trace.getSpan(context.active());
+          const spanContext = span?.spanContext();
           logger.info(
-            { ...Object.fromEntries(existingPropagationHeaders) },
-            'propagation headers already present, skipping'
+            { 'trace-id': spanContext?.traceId, 'span-id': spanContext?.spanId },
+            'injecting propagation headers'
           );
         }
-        return;
-      }
-      if (otelDebug) {
-        const span = trace.getSpan(context.active());
-        const spanContext = span?.spanContext();
-        logger.info(
-          { 'trace-id': spanContext?.traceId, 'span-id': spanContext?.spanId },
-          'injecting propagation headers'
-        );
-      }
-      propagation.inject(context.active(), headers);
-    },
+        propagation.inject(context.active(), headers);
+      },
+    }
   };
   return options;
 }
@@ -322,8 +324,9 @@ function getEdgeOptions() {
 export async function initSentry(): Promise<Client | undefined> {
   // Sentry requires a global.next object to be present, but it's not always there.
   if (!('next' in globalThis)) {
+    // @ts-expect-error - globalThis.next is not typed
     globalThis.next = {
-      version: '15.4.0',
+      version: '16.1.7',
     };
   }
   if (process.env.NEXT_RUNTIME === 'edge') {

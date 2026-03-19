@@ -2,7 +2,8 @@
 
 import React, { useMemo } from 'react';
 
-import { Global, css, useTheme } from '@emotion/react';
+import { Global, css } from '@emotion/react';
+import { useTheme } from '@mui/material';
 import type { Theme } from '@emotion/react';
 
 const getGlobalStyles = (theme: Theme) => css`
