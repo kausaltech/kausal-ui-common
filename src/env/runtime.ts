@@ -75,6 +75,7 @@ function env(key: string) {
   let publicEnv: Record<string, string>;
   if (!(WINDOW_PUBLIC_ENV_KEY in window)) {
     publicEnv = readPublicEnvFromMeta();
+    // @ts-expect-error window[WINDOW_PUBLIC_ENV_KEY] is not typed
     window[WINDOW_PUBLIC_ENV_KEY] = publicEnv;
   } else {
     publicEnv = window[WINDOW_PUBLIC_ENV_KEY] as Record<string, string>;

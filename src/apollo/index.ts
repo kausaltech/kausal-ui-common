@@ -1,8 +1,8 @@
-import type { ApolloClient, NormalizedCacheObject } from '@apollo/client';
+import type { ApolloClient } from '@apollo/client';
 import type { Span } from '@sentry/core';
 import type { Logger } from 'pino';
 
-export type ApolloClientType = ApolloClient<NormalizedCacheObject>;
+export type ApolloClientType = ApolloClient;
 
 export interface DefaultApolloContext {
   locale?: string;
@@ -14,4 +14,5 @@ export interface DefaultApolloContext {
   span?: Span;
   traceId?: string;
   spanId?: string;
+  uri?: string;
 }
