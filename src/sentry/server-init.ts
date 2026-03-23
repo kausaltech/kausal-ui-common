@@ -1,7 +1,7 @@
 /* istanbul ignore file */
-
 import { context, propagation } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
+import type { HttpInstrumentationConfig } from '@opentelemetry/instrumentation-http';
 import { serializeEnvelope } from '@sentry/core';
 import type {
   BaseTransportOptions,
@@ -14,7 +14,7 @@ import type {
 } from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
 import { type EdgeOptions, type NodeOptions } from '@sentry/nextjs';
-import type { httpIntegration, nativeNodeFetchIntegration } from '@sentry/node';
+import type { nativeNodeFetchIntegration } from '@sentry/node';
 import type { Logger } from 'pino';
 
 import {
@@ -36,6 +36,7 @@ import {
 import { envToBool } from '@common/env/utils';
 import { getLogger } from '@common/logging/logger';
 import { ensureTrailingSlash } from '@common/utils';
+
 import { initSentryCommon } from './common-init';
 
 const IGNORE_PATHS = [
@@ -138,7 +139,7 @@ function getCommonOptions() {
     environment,
     release: getSentryRelease(),
     enabled: enableSpotlight ? true : undefined,
-    maxValueLength: (!runtimeConfig.sentryDsn && enableSpotlight) ? 10000 : undefined,
+    maxValueLength: !runtimeConfig.sentryDsn && enableSpotlight ? 10000 : undefined,
     // If we're using Spotlight, and a DSN is not set, we need to create a fake transport so that tracing works.
     transport: runtimeConfig.sentryDsn || !enableSpotlight ? undefined : makeNullTransport,
     tracesSampler(ctx: SamplingContext) {
@@ -201,16 +202,12 @@ function getNodeFetchIntegrationOptions(): NodeFetchOptions {
 
 const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
 
-type HttpIntegrationOptions = Parameters<typeof httpIntegration>[0];
-type HttpInstrumentationOptions = NonNullable<
-  NonNullable<HttpIntegrationOptions>
->
-
-export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
+export function getHttpInstrumentationOptions(): HttpInstrumentationConfig {
   const logger = getLogger('http-instrumentation', { noSpan: true });
-  const options: HttpInstrumentationOptions = {
-    ignoreIncomingRequests(urlPath, _request) {
-      if (IGNORE_PATHS.some((path) => urlPath === path)) {
+  const options: HttpInstrumentationConfig = {
+    ignoreIncomingRequestHook(request) {
+      const urlPath = request.url;
+      if (!urlPath || IGNORE_PATHS.some((path) => urlPath === path)) {
         return true;
       }
       if (IGNORE_PREFIXES.some((prefix) => urlPath.startsWith(prefix))) {
@@ -221,11 +218,9 @@ export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
       }
       return false;
     },
-    ignoreOutgoingRequests(url, request) {
+    ignoreOutgoingRequestHook(request) {
       const spotlightUrl = getSpotlightUrl();
       if (spotlightUrl) {
-        // Something weird is going on with the url argument, so we'll use
-        // the request object instead.
         const spUrl = new URL(spotlightUrl);
         if (
           request.hostname === spUrl.hostname &&
@@ -237,36 +232,34 @@ export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
       }
       return false;
     },
-    instrumentation: {
-      requestHook: (span: Span, request) => {
-        if (!('headers' in request)) {
-          return;
-        }
-        const { headers } = request;
-        const existingPropagationHeaders = propagation
-          .fields()
-          .filter((header) => header.toLowerCase() in headers)
-          .map((header) => [header, headers[header.toLowerCase()]]);
-        if (existingPropagationHeaders.length > 0) {
-          if (otelDebug) {
-            logger.info(
-              { ...Object.fromEntries(existingPropagationHeaders) },
-              'propagation headers already present, skipping'
-            );
-          }
-          return;
-        }
+    requestHook: (span: Span, request) => {
+      if (!('headers' in request)) {
+        return;
+      }
+      const { headers } = request;
+      const existingPropagationHeaders = propagation
+        .fields()
+        .filter((header) => header.toLowerCase() in headers)
+        .map((header) => [header, headers[header.toLowerCase()]]);
+      if (existingPropagationHeaders.length > 0) {
         if (otelDebug) {
-          const span = trace.getSpan(context.active());
-          const spanContext = span?.spanContext();
           logger.info(
-            { 'trace-id': spanContext?.traceId, 'span-id': spanContext?.spanId },
-            'injecting propagation headers'
+            { ...Object.fromEntries(existingPropagationHeaders) },
+            'propagation headers already present, skipping'
           );
         }
-        propagation.inject(context.active(), headers);
-      },
-    }
+        return;
+      }
+      if (otelDebug) {
+        const span = trace.getSpan(context.active());
+        const spanContext = span?.spanContext();
+        logger.info(
+          { 'trace-id': spanContext?.traceId, 'span-id': spanContext?.spanId },
+          'injecting propagation headers'
+        );
+      }
+      propagation.inject(context.active(), headers);
+    },
   };
   return options;
 }

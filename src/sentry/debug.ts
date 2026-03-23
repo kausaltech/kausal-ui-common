@@ -132,7 +132,7 @@ export class DebugSentrySpanProcessor extends SentrySpanProcessor {
   onStart(span_: Span, _parentContext: Context): void {
     super.onStart(span_, _parentContext);
     const span = span_ as unknown as ReadableSpan;
-    const parentAttrs = {};
+    const parentAttrs: Record<string, string> = {};
     if ('parentSpanContext' in span && span.parentSpanContext) {
       parentAttrs['span.parent'] = `${span.parentSpanContext.spanId}`;
     }
@@ -188,9 +188,11 @@ export class DebugPropagator extends SentryPropagator {
   extract(context: Context, carrier: unknown, getter: TextMapGetter): Context {
     const ret = super.extract(context, carrier, getter);
     const activeSpan = trace.getSpan(ret);
-    this.logger.info(
-      `${spanColored(activeSpan as unknown as ReadableSpan)} ${withColor('extracted', styles.cyan)}`
-    );
+    if (activeSpan) {
+      this.logger.info(
+        `${spanColored(activeSpan as unknown as ReadableSpan)} ${withColor('extracted', styles.cyan)}`
+      );
+    }
     return ret;
   }
 }
