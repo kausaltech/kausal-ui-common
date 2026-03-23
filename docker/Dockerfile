@@ -1,4 +1,4 @@
-#syntax=docker/dockerfile:1.17-labs
+#syntax=docker/dockerfile:1.22-labs
 ARG base_image=node:24-alpine3.22
 
 #
@@ -14,7 +14,9 @@ ENV \
   NPM_CONFIG_CACHE=/cache/npm \
   XDG_CACHE_HOME=/cache
 
-COPY package*.json pnpm-lock.* ./
+COPY package*.json pnpm-* ./
+COPY kausal_common/package*.json kausal_common/pnpm* ./kausal_common/
+COPY kausal_common/ ./kausal_common/
 
 RUN --mount=type=secret,id=NPM_USER --mount=type=secret,id=NPM_PASSWORD --mount=type=cache,target=/cache <<EOF
   echo "Setting up npm registry"
@@ -24,7 +26,7 @@ RUN --mount=type=secret,id=NPM_USER --mount=type=secret,id=NPM_PASSWORD --mount=
     echo "Using custom registry at: ${NPM_REGISTRY_SERVER}"
     if [ -z "${NPM_USER}" -o -z "${NPM_PASSWORD}" ] ; then
       if [ ! -f /run/secrets/NPM_USER  -o ! -f /run/secrets/NPM_PASSWORD ] ; then
-        echo "Custom registry credentials not passed as secrets"
+        echo "ERROR: Custom registry credentials not passed as secrets"
         exit 1
       fi
       export NPM_USER="$(cat /run/secrets/NPM_USER)"
@@ -33,7 +35,7 @@ RUN --mount=type=secret,id=NPM_USER --mount=type=secret,id=NPM_PASSWORD --mount=
       export NPM_PASS="${NPM_PASSWORD}"
     fi
     if [ -z "$NPM_USER" -o -z "$NPM_PASS" ] ; then
-      echo "Custom registry credentials not set"
+      echo "ERROR: Custom registry credentials not set"
       exit 1
     fi
     echo "Logging in to custom registry"
@@ -46,13 +48,8 @@ EOF
 RUN --mount=type=cache,target=/cache <<EOF
   echo "Installing npm dependencies"
   set -e
-  if [ -f pnpm-lock.yaml ]; then
-    pnpm config set store-dir /cache/pnpm-store
-    echo "nodeLinker: hoisted" > pnpm-workspace.yaml
-    pnpm install --frozen-lockfile
-  else
-    npm ci
-  fi
+  pnpm config set store-dir /cache/pnpm-store
+  pnpm install --frozen-lockfile
 EOF
 
 RUN <<EOF
@@ -111,6 +108,7 @@ RUN --mount=type=cache,target=/tools <<EOF
 EOF
 
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/kausal_common/node_modules ./kausal_common/node_modules
 
 # Copy the rest of the files
 COPY --exclude=kausal_common/docker . .
@@ -150,7 +148,7 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN --mount=type=cache,target=/app/.nex
   echo "Building NextJS bundle"
   set -e
   corepack enable
-  npm run build -- --no-mangling
+  pnpm build
   if [ ${CODE_COVERAGE} -ne 1 ]; then
     /manage-nextjs-cache.sh save
   fi
@@ -162,6 +160,11 @@ RUN --mount=type=cache,target=/tools <<EOF
     mv .next-coverage .next
     exit 0
   fi
+
+  # FIXME
+  echo "SBOM generation disabled for now"
+  exit 0
+
   echo "Generating SBOM"
   set -e
   mkdir /sbom
@@ -189,10 +192,9 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs &&
 
 # For standalone builds
 COPY --chown=nextjs:nodejs --from=builder /app/.next/standalone ./
-COPY --chown=nextjs:nodejs --from=builder /app/package-lock.json* /app/pnpm-lock.yaml* ./
+COPY --chown=nextjs:nodejs --from=builder /app/pnpm-lock.yaml* ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs --parents /app/node_modules/./@kausal-private* ./node_modules/
 COPY --from=builder /sbom* /
 
 COPY ./kausal_common/docker/start-server.sh /entrypoint.sh
