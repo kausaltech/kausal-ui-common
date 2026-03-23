@@ -118,7 +118,8 @@ export function getLogger(
           correlationId = val;
         }
       } else {
-        const val = headers[correlationIdHeader] as string | string[] | undefined;
+        const incomingHeaders = headers as IncomingHttpHeaders;
+        const val = incomingHeaders[correlationIdHeader];
         if (typeof val === 'string') {
           correlationId = val;
         } else if (Array.isArray(val)) {

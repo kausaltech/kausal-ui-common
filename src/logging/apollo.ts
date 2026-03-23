@@ -60,7 +60,6 @@ export function logApolloError(error: unknown, options?: ApolloErrorContext) {
     } else {
       logger.error(extraContext, `Network error: ${error.message}`);
     }
-    logger.error(error, 'GraphQL server error');
   } else if (LinkError.is(error)) {
     logger.error(error, 'GraphQL link error');
   } else {

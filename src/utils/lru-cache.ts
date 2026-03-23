@@ -126,7 +126,11 @@ export default class LRUCache<K, V> implements NodeChain {
     this._map.forEach((node, key) => {
       const age = now - node.lastAccess;
 
-      console.log(' ', key, `(age: ${age / 1000}s, ttl: ${node.ttl / 1000}s) -> ${printValueCb(node.value as V)}`);
+      console.log(
+        ' ',
+        key,
+        `(age: ${age / 1000}s, ttl: ${node.ttl / 1000}s) -> ${printValueCb(node.value as V)}`
+      );
     });
   }
 
@@ -162,7 +166,6 @@ export default class LRUCache<K, V> implements NodeChain {
     // reload cleaner
     if (this._ttlP) {
       clearInterval(this._ttlP);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const interv = setInterval(this._ttlClean.bind(this), this._ttlInterval);
       this._ttlP = interv;
       interv.unref?.();
@@ -254,7 +257,6 @@ export default class LRUCache<K, V> implements NodeChain {
         this._delete(this._prev as Node<K, V>);
       }
       // Run TTL
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       if (!this._ttlP) this._ttlP = setInterval(this._ttlClean.bind(this), this._ttlInterval);
     }
     return ele;
