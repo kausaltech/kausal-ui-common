@@ -7,7 +7,7 @@ import { getGlobalContext, getRootLoggerOptions } from './init';
 import { type LogRecord, getRootLogger, isPrettyLogger, setRootLogger } from './logger';
 
 export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
-  const write: WriteFn = (obj: LogRecord) => {
+  const write = (obj: LogRecord) => {
     const { time, level, ...rest } = obj;
     const rec = {
       level,
@@ -32,7 +32,7 @@ export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write,
+    write: write as WriteFn,
   };
 }
 

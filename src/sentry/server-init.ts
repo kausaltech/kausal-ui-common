@@ -317,9 +317,8 @@ function getEdgeOptions() {
 export async function initSentry(): Promise<Client | undefined> {
   // Sentry requires a global.next object to be present, but it's not always there.
   if (!('next' in globalThis)) {
-    // @ts-expect-error - globalThis.next is not typed
     globalThis.next = {
-      version: '16.1.7',
+      version: '16.2.0',
     };
   }
   if (process.env.NEXT_RUNTIME === 'edge') {

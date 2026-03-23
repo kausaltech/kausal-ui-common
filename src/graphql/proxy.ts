@@ -11,7 +11,8 @@ import {
   PATHS_INSTANCE_IDENTIFIER_HEADER,
   WILDCARD_DOMAINS_HEADER,
 } from '@common/constants/headers.mjs';
-import { getPathsGraphQLUrl, getWatchGraphQLUrl, isLocalDev } from '@common/env';
+import { getPathsGraphQLUrl, getWatchGraphQLUrl } from '@common/env';
+import { envToBool } from '@common/env/utils';
 import { getLogger } from '@common/logging/logger';
 import {
   type APIType,
@@ -59,8 +60,9 @@ function respondWithStatusLegacy(
   response?: HttpResponse
 ): NextResponse {
   const { statusCode, headers, statusText } = response ?? {};
+  console.log(headers);
   if (headers) {
-    Object.entries(headers).forEach(([hdr, val]) => {
+    headers.forEach(([hdr, val]) => {
       res.appendHeader(hdr, val);
     });
   }
@@ -117,6 +119,14 @@ export default async function proxyGraphQLRequest(
     return respond({ error: 'Invalid Content-Type header' }, { statusCode: 415 });
   }
 
+  if (envToBool(process.env.OTEL_DEBUG, false)) {
+    const debugHeaders = Array.from(
+      incomingHeaders.entries().map(([key, value]) => `${key}: ${value}`)
+    );
+    debugHeaders.sort();
+    logger.debug(`Incoming headers:\n${debugHeaders.join('\n')}`);
+  }
+
   // Determine headers to send to the backend.
   const backendHeaders: Record<string, string> = {};
 
@@ -162,9 +172,12 @@ export default async function proxyGraphQLRequest(
     backendHeaders['X-Forwarded-For'] = remoteIp;
   }
 
-  if (isLocalDev) {
-    logger.trace(req.headers, 'Headers from client');
-    logger.trace(backendHeaders, 'Headers to backend');
+  if (envToBool(process.env.OTEL_DEBUG, false)) {
+    const debugHeaders = Array.from(
+      Object.entries(backendHeaders).map(([key, value]) => `${key}: ${value}`)
+    );
+    debugHeaders.sort();
+    logger.debug(`Headers to backend:\n${debugHeaders.join('\n')}`);
   }
 
   const url = apiType === 'watch' ? getWatchGraphQLUrl() : getPathsGraphQLUrl();

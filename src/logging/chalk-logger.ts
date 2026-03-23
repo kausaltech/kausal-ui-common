@@ -90,7 +90,7 @@ export function formatMessage(record: ChalkRecord) {
     fullMsg += ` ${messageStyles.message(record.message)}`;
   }
   let simpleKeyString = '';
-  const rest = {};
+  const rest: Record<string, unknown> = {};
   Object.entries(record.rest).forEach(([key, value]) => {
     let color: CI | undefined, strVal: string | undefined;
     switch (typeof value) {
@@ -137,7 +137,7 @@ export function writeLog(record: ChalkRecord) {
   logFunc(...args);
 }
 
-const write: WriteFn = (obj: LogRecord) => {
+const write = (obj: LogRecord) => {
   const { runtime, time, level, msg, logger, ...rest } = obj;
   try {
     const record: ChalkRecord = {
@@ -162,7 +162,7 @@ export function setupBrowserLogging(options: LoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write,
+    write: write as WriteFn,
   };
 }
 
@@ -186,6 +186,6 @@ export function setupEdgeLogging(options: LoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write,
+    write: write as WriteFn,
   };
 }
