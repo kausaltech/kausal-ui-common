@@ -10,7 +10,8 @@ import tsEslint from 'typescript-eslint';
 
 const JS_EXTS = '@(ts|tsx|js|jsx|mjs|cjs)';
 
-/** @type {import('eslint-config-next/dist/core-web-vitals')} */
+/** @type {import('eslint').Linter.Config} */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const nextEslintConfig = nextEslintConfigModule;
 
 /**
@@ -76,6 +77,7 @@ export async function getEslintConfig(rootDir) {
     files.push(allExtsForPath('', exts));
     files.push(allExtsForPath('src/**', exts));
     files.push(allExtsForPath('e2e-tests/**', exts));
+    files.push(allExtsForPath('kausal_common/configs/**', exts));
     files.push(allExtsForPath('kausal_common/src/**', exts));
     files.push(allExtsForPath('kausal_common/e2e-tests/**', exts));
     if (storybookConfigs.length > 0) {
