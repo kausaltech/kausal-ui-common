@@ -29,6 +29,7 @@ export function setupNodeLogging(_options: PinoLoggerOptions): DestinationStream
         return '';
       },
     },
+    // @ts-expect-error - log is actually a LogRecord
     messageFormat: (log: LogRecord, _messageKey) => {
       const { level, time, runtime, logger, msg, pid, hostname, ...rest } = log;
       const record = {

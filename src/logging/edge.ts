@@ -7,13 +7,14 @@ import { getGlobalContext, getRootLoggerOptions } from './init';
 import { type LogRecord, getRootLogger, isPrettyLogger, setRootLogger } from './logger';
 
 export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
-  const write: WriteFn = (obj: LogRecord) => {
+  const write = (obj: LogRecord) => {
     const { time, level, ...rest } = obj;
     const rec = {
       level,
       time: new Date(time).toISOString(),
       ...rest,
     };
+    // @ts-expect-error - console is missing .fatal
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const logFunc = console[level] || console.log;
     try {
@@ -32,7 +33,7 @@ export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write,
+    write: write as WriteFn,
   };
 }
 

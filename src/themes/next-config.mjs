@@ -1,5 +1,5 @@
 // @ts-check
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
@@ -16,6 +16,7 @@ function tryImportThemePackage(packageNames) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return require(packageName);
     } catch (error) {
+      // @ts-expect-error - error is not typed
       if (error.code !== 'MODULE_NOT_FOUND') {
         throw error;
       }
@@ -44,6 +45,7 @@ export function initializeThemes(rootDir) {
       console.log('Private themes not found; using public themes');
       const {
         generateThemeSymlinks: generateThemeSymlinksPublic,
+        // @ts-expect-error - no types for setup.cjs
       } = require('@kausal/themes/setup.cjs');
       generateThemeSymlinksPublic(destPath, { verbose: false });
     }

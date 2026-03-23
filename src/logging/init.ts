@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 import otel from '@opentelemetry/api';
-import type { LoggerOptions as PinoLoggerOptions, pino } from 'pino';
+import type { Logger, LoggerOptions as PinoLoggerOptions } from 'pino';
 
 export const LOGGER_TRACE_ID = 'trace-id';
 export const LOGGER_SPAN_ID = 'span-id';
@@ -20,8 +20,9 @@ export function getSpanContext() {
   };
 }
 
-function addDynamicGlobalAttributes(_mergeObject: object, _level: number, logger: pino.Logger) {
+function addDynamicGlobalAttributes(_mergeObject: object, _level: number, logger: Logger) {
   const attrs = {
+    // @ts-expect-error - logger doesn't have a noSpan property
     ...(!logger['noSpan'] ? getSpanContext() : {}),
   };
   return attrs;
