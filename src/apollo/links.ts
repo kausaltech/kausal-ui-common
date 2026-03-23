@@ -9,14 +9,15 @@ import type { StartSpanOptions } from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
 import { Kind, type OperationDefinitionNode } from 'graphql';
 import type { Bindings } from 'pino';
+import { tap } from 'rxjs';
 
 import { isLocalDev, isProductionDeployment, isServer } from '@common/env';
 import { generateCorrelationID, getLogger } from '@common/logging';
 import { logApolloError } from '@common/logging/apollo';
 
 import type { DefaultApolloContext } from '.';
-import { tap } from 'rxjs';
 
+// @ts-expect-error globalThis is not typed
 if (globalThis.__DEV__) {
   // Adds messages only in a dev environment
   loadDevMessages();
@@ -57,22 +58,20 @@ const logOperation = new ApolloLink((operation, forward: ApolloLink.ForwardFunct
         duration: durationMs,
       };
       const durationStr = durationMs != null ? `(took ${durationMs} ms)` : `<unknown duration>`;
-      if (isLocalDev) {
+      if (isLocalDev && result.data) {
         logContext.responseLength = JSON.stringify(result.data ?? {}).length;
       }
       const nrErrors = result.errors?.length;
       if (nrErrors) {
-        opLogger.error(
-          { errorCount: nrErrors, ...logContext },
-          `Operation finished with errors ${durationStr}`
-        );
+        opLogger.error({ ...logContext }, `Operation finished with errors ${durationStr}`);
       } else {
         opLogger.info(
           logContext,
           `GraphQL request ${operationName} finished successfully ${durationStr}`
         );
       }
-    }));
+    })
+  );
 });
 
 export const logOperationLink = ApolloLink.from([logOperation, logErrorLink]);
@@ -111,11 +110,11 @@ export const createSentryLink = (uri: string) => {
       data: {
         'operation.name': operation.operationName,
         'operation.type': opType,
-        'originator': context.componentName,
+        originator: context.componentName,
         uri,
         variables: operation.variables,
       },
-    })
+    });
     return Sentry.startSpanManual(spanOpts, (span, finish) => {
       if (isLocalDev) {
         span.setAttribute('graphql.document', operation.query.loc?.source.body ?? '<unknown>');

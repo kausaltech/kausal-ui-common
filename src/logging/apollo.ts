@@ -1,6 +1,13 @@
 /* istanbul ignore file */
 import type { ApolloLink } from '@apollo/client';
-import { CombinedGraphQLErrors, CombinedProtocolErrors, LinkError, ServerError, ServerParseError, isErrorLike } from '@apollo/client/errors';
+import {
+  CombinedGraphQLErrors,
+  CombinedProtocolErrors,
+  LinkError,
+  ServerError,
+  ServerParseError,
+  isErrorLike,
+} from '@apollo/client/errors';
 import type { Bindings, Logger } from 'pino';
 
 import type { ApolloClientType, DefaultApolloContext } from '@common/apollo/index.js';
@@ -17,7 +24,6 @@ export type ApolloErrorContext = Partial<{
   component: string;
   logger: Logger;
 }>;
-
 
 export function logApolloError(error: unknown, options?: ApolloErrorContext) {
   let logger: Logger;
