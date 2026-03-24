@@ -20,9 +20,6 @@
 
 (cors) {
 	@cors_preflight method OPTIONS
-	@cors {
-		header Origin *
-	}
 	handle @cors_preflight {
 		header {
 			Access-Control-Allow-Origin *
@@ -33,13 +30,12 @@
 		respond "" 204
 	}
 
-	handle @cors {
-		header {
-			Access-Control-Allow-Origin *
-			Access-Control-Allow-Headers *
-			Access-Control-Expose-Headers *
-			defer
-		}
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Headers *
+		Access-Control-Expose-Headers *
+		Vary Origin
+		defer
 	}
 }
 
