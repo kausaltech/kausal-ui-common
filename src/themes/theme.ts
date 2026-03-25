@@ -20,7 +20,7 @@ export async function loadTheme(themeIdentifier: string): Promise<Theme> {
   } else {
     const THEME_PATH = '/public/static/themes';
     readThemeFile = async (id: string) => {
-      const theme = (await import(`${THEME_PATH}/${id}/theme.json`)) as { default: Theme };
+      const theme = (await import(/* @vite-ignore */ `${THEME_PATH}/${id}/theme.json`)) as { default: Theme };
       return theme.default;
     };
   }
