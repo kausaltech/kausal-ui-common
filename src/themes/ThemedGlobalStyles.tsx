@@ -59,7 +59,7 @@ const getGlobalStyles = (theme: Theme) => css`
     hyphens: auto;
 
     // Allow hyphenation only on small screens
-    @media (min-width: ${theme.breakpoints.values.sm}px) {
+    @media (min-width: ${theme.breakpointSm}) {
       hyphens: none;
     }
   }
