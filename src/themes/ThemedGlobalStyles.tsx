@@ -237,8 +237,7 @@ const getGlobalStyles = (theme: Theme) => css`
       font-size: 10pt;
     }
 
-    body,
-    .card {
+    body {
       background-color: #fff !important;
     }
 
