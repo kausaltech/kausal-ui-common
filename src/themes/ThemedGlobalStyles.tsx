@@ -237,6 +237,11 @@ const getGlobalStyles = (theme: Theme) => css`
       font-size: 10pt;
     }
 
+    body,
+    .card {
+      background-color: #fff !important;
+    }
+
     .container,
     .container-fluid,
     .container-sm,
