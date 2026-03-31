@@ -1,7 +1,8 @@
 /* istanbul ignore file */
-import { ApolloLink } from '@apollo/client';
+import { ApolloLink, ServerError } from '@apollo/client';
 import { loadDevMessages, loadErrorMessages } from '@apollo/client/dev';
 import { ErrorLink } from '@apollo/client/link/error';
+import { RetryLink } from '@apollo/client/link/retry';
 import * as otelApi from '@opentelemetry/api';
 import { ATTR_URL_FULL } from '@opentelemetry/semantic-conventions';
 import { SPAN_STATUS_ERROR, SPAN_STATUS_OK } from '@sentry/core';
@@ -17,7 +18,6 @@ import { logApolloError } from '@common/logging/apollo';
 
 import type { DefaultApolloContext } from '.';
 
-// @ts-expect-error globalThis is not typed
 if (globalThis.__DEV__) {
   // Adds messages only in a dev environment
   loadDevMessages();
@@ -75,6 +75,16 @@ const logOperation = new ApolloLink((operation, forward: ApolloLink.ForwardFunct
 });
 
 export const logOperationLink = ApolloLink.from([logOperation, logErrorLink]);
+
+export const retryLink = new RetryLink({
+  attempts: (attempt, _operation, error) => {
+    return attempt < 3 && ServerError.is(error) && error.statusCode >= 500;
+  },
+  delay: {
+    initial: 1000,
+    jitter: true,
+  },
+});
 
 export function extractDefinition(operation: ApolloLink.Operation): OperationDefinitionNode {
   // We know we always have a single definition, because Apollo validates this before we get here.
