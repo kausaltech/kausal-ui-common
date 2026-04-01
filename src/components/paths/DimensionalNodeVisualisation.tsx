@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useReactiveVar } from '@apollo/client';
 import { useTheme } from '@emotion/react';
+import type { DimensionalNodeMetricFragment } from '@generated/paths/graphql';
 import { Box } from '@mui/material';
 import chroma from 'chroma-js';
+import { useLocale } from 'next-intl';
 
 import { activeGoalVar } from '@common/apollo/paths-cache';
 import type { TFunction } from '@common/i18n';
+import { formatWithFormatter, makeFormatter } from '@common/utils/format';
 import { genColorsFromTheme, setUniqueColors } from '@common/utils/paths/colors';
 import {
   type MetricCategoryChoice,
@@ -27,8 +30,6 @@ import {
   metricHasProgressTrackingScenario,
 } from '@common/utils/paths/progress-tracking';
 
-import type { DimensionalNodeMetricFragment } from '@/common/__generated__/paths/graphql';
-
 import DimensionControls from './DimensionControls';
 import NodeGraph from './NodeGraph';
 import ToolsMenu from './ToolsMenu';
@@ -45,6 +46,7 @@ type InstanceContext = {
   features?: {
     baselineVisibleInGraphs?: boolean | null;
     maximumFractionDigits?: number | null;
+    showSignificantDigits?: number | null;
   } | null;
 };
 
@@ -118,6 +120,15 @@ export default function DimensionalNodeVisualisation({
 }: DimensionalNodeVisualisationProps) {
   const activeGoal = useReactiveVar(activeGoalVar);
   const theme = useTheme();
+  const locale = useLocale();
+  const formatValue = useMemo(() => {
+    const formatter = makeFormatter(
+      locale,
+      instance.features?.showSignificantDigits ?? undefined,
+      instance.features?.maximumFractionDigits ?? undefined
+    );
+    return (value: number) => formatWithFormatter(formatter, value);
+  }, [locale, instance.features?.maximumFractionDigits]);
   const scenarios = site?.scenarios ?? [];
   const hasProgressTracking = metricHasProgressTrackingScenario(metric, scenarios);
 
@@ -408,6 +419,7 @@ export default function DimensionalNodeVisualisation({
           categoryColors={categoryColors}
           theme={theme}
           maximumFractionDigits={instance.features?.maximumFractionDigits ?? undefined}
+          formatValue={formatValue}
           baselineLabel={site?.baselineName}
           showTotalLine={hasNegativeValues && metric.stackable && dataCategories.length > 1}
           onClickMeasuredEmissions={onClickMeasuredEmissions}
