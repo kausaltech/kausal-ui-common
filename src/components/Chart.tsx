@@ -34,6 +34,7 @@ import throttle from 'lodash-es/throttle';
 import { useBaseTheme } from '@common/themes/mui-theme/use-base-theme';
 
 import { getChartTheme } from './chart-theme';
+import './register-echarts-locales';
 
 echarts.use([
   BarChart,
@@ -100,6 +101,7 @@ type Props = {
   // Resize the legend when the chart loaded or resized, also adds additional space to the bottom of the chart
   withResizeLegend?: boolean;
   renderer?: 'svg' | 'canvas';
+  locale?: string;
 };
 
 export function Chart({
@@ -110,6 +112,7 @@ export function Chart({
   className,
   withResizeLegend = true,
   renderer = 'canvas',
+  locale = 'en',
 }: Props) {
   const chartRef = useRef<echarts.ECharts | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -120,6 +123,7 @@ export function Chart({
   useEffect(() => {
     const chart = echarts.init(wrapperRef.current, getChartTheme(theme).theme, {
       renderer: renderer,
+      locale: locale,
     });
     chartRef.current = chart;
 
@@ -150,7 +154,7 @@ export function Chart({
       chart.clear();
       chart.dispose();
     };
-  }, [theme, withResizeLegend, renderer]);
+  }, [theme, withResizeLegend, renderer, locale]);
 
   // Show/hide the loading indicator
   useEffect(() => {
@@ -207,5 +211,12 @@ export function Chart({
     }
   }, [onZrClick]);
 
-  return <div ref={wrapperRef} className={className} style={{ height }} aria-busy={(isLoading || isRendering) ? 'true' : undefined} />;
+  return (
+    <div
+      ref={wrapperRef}
+      className={className}
+      style={{ height }}
+      aria-busy={isLoading || isRendering ? 'true' : undefined}
+    />
+  );
 }

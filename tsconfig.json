@@ -2,7 +2,8 @@
   "extends": "./configs/tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@common/*": ["./src/*"]
+      "@common/*": ["./src/*"],
+      "@generated/paths/*": ["../src/common/__generated__/paths/*"]
     }
   },
   "include": ["src", "configs/*.mjs", "configs/*.js", "configs/*.ts"]

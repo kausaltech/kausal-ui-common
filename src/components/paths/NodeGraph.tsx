@@ -6,13 +6,11 @@ import type {
   LegendOption,
   TooltipPositionCallback,
 } from 'echarts/types/dist/shared';
-//import { type TFunction, useTranslation } from 'next-i18next';
-
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { tint } from 'polished';
 
 import { Chart } from '@common/components/Chart';
-import { beautifyValue, sanitizeHtmlUnit } from '@common/utils/format';
+import { sanitizeHtmlUnit } from '@common/utils/format';
 
 type TFunction = ReturnType<typeof useTranslations>;
 
@@ -28,7 +26,6 @@ type TFunction = ReturnType<typeof useTranslations>;
  * @param referenceYear - The reference year to plot. If present, we are aware that there is a gap in the data.
  * @param forecastRange - The forecast range to plot. Visualized as an areaMarker. Datapoints in the range marked as forecast. Filtered to the visible range of years.
  * @param categoryColors - The colors of the categories.
- * @param maximumFractionDigits - Used for beautifying and localizing values for display.
  * @param baselineLabel - The label of the baseline.
  * @param showTotalLine - Whether to show the total line.
  */
@@ -52,6 +49,7 @@ type NodeGraphProps = {
   forecastRange: [number, number] | null;
   categoryColors: string[];
   maximumFractionDigits: number | undefined;
+  formatValue: (value: number) => string;
   baselineLabel: string | null | undefined;
   showTotalLine?: boolean;
   onClickMeasuredEmissions?: (year: number) => void;
@@ -86,7 +84,7 @@ export default function NodeGraph(props: NodeGraphProps) {
     referenceYear,
     forecastRange,
     categoryColors,
-    maximumFractionDigits,
+    formatValue,
     baselineLabel,
     showTotalLine = false,
     onClickMeasuredEmissions,
@@ -97,6 +95,7 @@ export default function NodeGraph(props: NodeGraphProps) {
     predictionLabel,
   } = props;
 
+  const locale = useLocale();
   const resolvedChartType: ChartType = chartType ?? (stackable ? 'bar' : 'line');
   const resolvedShowTotalLine = resolvedChartType === 'area' ? false : showTotalLine;
 
@@ -253,7 +252,7 @@ export default function NodeGraph(props: NodeGraphProps) {
         isForecast,
         isReferenceYear,
         unit.htmlShort,
-        maximumFractionDigits,
+        formatValue,
         specialSeriesLabels,
         t,
         resolvedShowTotalLine,
@@ -360,6 +359,9 @@ export default function NodeGraph(props: NodeGraphProps) {
         fontWeight: 'normal',
       },
       nameGap: 30,
+      axisLabel: {
+        formatter: (value: number) => (formatValue ? formatValue(value) : value),
+      },
     },
     barGap: 0,
     barCategoryGap: BAR_CATEGORY_GAP,
@@ -374,6 +376,7 @@ export default function NodeGraph(props: NodeGraphProps) {
       height={CHART_HEIGHT}
       className="plot-container"
       onZrClick={handleChartClick}
+      locale={locale}
     />
   );
 }
@@ -717,7 +720,7 @@ function buildTooltipContent(
   isForecast: boolean,
   isReferenceYear: boolean,
   unit: string,
-  maximumFractionDigits: number | undefined,
+  formatValue: (value: number) => string,
   specialSeriesLabels: Record<string, string>,
   t: TFunction,
   showTotalLine: boolean,
@@ -752,7 +755,7 @@ function buildTooltipContent(
   if (regularSeries.length > 0) {
     tooltip += `<div style="border-top: 1px solid #eee; margin: 8px 0 4px 0;"></div>`;
     [...regularSeries].reverse().forEach((param) => {
-      tooltip += buildTooltipRow(param, unit, maximumFractionDigits);
+      tooltip += buildTooltipRow(param, unit, formatValue, undefined, undefined);
     });
   }
 
@@ -760,13 +763,7 @@ function buildTooltipContent(
   if (specialSeries.length > 0) {
     tooltip += `<div style="border-top: 1px solid #ccc; margin: 8px 0 4px 0;"></div>`;
     specialSeries.reverse().forEach((param) => {
-      tooltip += buildTooltipRow(
-        param,
-        unit,
-        maximumFractionDigits,
-        specialSeriesLabels,
-        showTotalLine
-      );
+      tooltip += buildTooltipRow(param, unit, formatValue, specialSeriesLabels, showTotalLine);
     });
   }
 
@@ -776,14 +773,14 @@ function buildTooltipContent(
 function buildTooltipRow(
   param: CallbackDataParams,
   unit: string,
-  maximumFractionDigits: number | undefined,
+  formatValue: (value: number) => string,
   specialSeriesLabels?: Record<string, string>,
   showTotalLine?: boolean
 ) {
   const yIndex: number | undefined = param?.encode?.y?.[0];
   if (!yIndex || !param.data) return '';
   const rawValue: number = param.data[yIndex] as number;
-  const value = beautifyValue(rawValue, undefined, maximumFractionDigits ?? undefined);
+  const value = formatValue(rawValue);
 
   if (value === '-' || value === undefined || value === null) return '';
   if (!param.seriesName || param.value === undefined) return '';
