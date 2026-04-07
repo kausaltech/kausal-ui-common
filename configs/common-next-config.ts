@@ -16,7 +16,6 @@ const isCoverageEnabled = process.env.CODE_COVERAGE === '1';
 
 export function getNextConfig(projectRoot: string): NextConfig {
   const config: NextConfig = {
-    reactCompiler: true,
     assetPrefix: prodAssetPrefix,
     output: standaloneBuild ? 'standalone' : undefined,
     typescript: {
@@ -107,6 +106,8 @@ export function getNextConfig(projectRoot: string): NextConfig {
       resolveAlias: {
         '@common/*': './kausal_common/src/*',
         '@/*': './src/*',
+        fs: 'node:fs',
+        path: 'node:path',
       },
     },
     webpack: (cfg: Webpack.Configuration, context) => {
@@ -115,6 +116,11 @@ export function getNextConfig(projectRoot: string): NextConfig {
       const _webpack = context.webpack as typeof Webpack;
       if (!cfg.resolve?.alias || !Array.isArray(cfg.plugins))
         throw new Error('cfg.resolve not defined');
+      cfg.resolve.alias = {
+        ...(cfg.resolve.alias as Record<string, string>),
+        '@common': path.join(projectRoot, 'kausal_common/src'),
+        '@': path.join(projectRoot, 'src'),
+      };
       cfg.resolve.extensionAlias = {
         '.js': ['.ts', '.js'],
       };
@@ -123,9 +129,15 @@ export function getNextConfig(projectRoot: string): NextConfig {
           ...cfg.optimization,
           minimize: false, // do not minify server bundle for easier debugging
         };
-        if (!isEdge) {
-          cfg.target = 'node22';
-        }
+        cfg.target = 'node24';
+        console.log(cfg.output);
+        cfg.output = {
+          ...cfg.output!,
+          environment: {
+            ...(cfg.output!.environment ?? {}),
+            nodePrefixForCoreModules: true,
+          },
+        };
       } else {
         // Stub out Node.js built-ins for client bundle; loadMessages.ts is
         // imported dynamically from _app.tsx but only executed server-side.
