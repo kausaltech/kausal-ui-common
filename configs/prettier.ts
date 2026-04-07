@@ -1,10 +1,6 @@
-// @ts-check
+import type { Config } from 'prettier';
 
-/**
- * @see https://prettier.io/docs/en/configuration.html
- * @type {import("prettier").Config}
- */
-const config = {
+const config: Config = {
   trailingComma: 'es5',
   tabWidth: 2,
   printWidth: 100,
@@ -12,10 +8,17 @@ const config = {
   singleQuote: true,
   importOrder: [
     '^node:',
+    '<BUILTIN_MODULES>',
     '^react(-dom)?$',
     '^next/',
+    '<SEPARATOR>',
+    '^@mui/',
+    '^@emotion/',
+    '<SEPARATOR>',
     '<THIRD_PARTY_MODULES>',
+    '<SEPARATOR>',
     '^@common/',
+    '<SEPARATOR>',
     '^@/',
     '^[./]',
   ],

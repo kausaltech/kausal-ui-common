@@ -60,7 +60,6 @@ function respondWithStatusLegacy(
   response?: HttpResponse
 ): NextResponse {
   const { statusCode, headers, statusText } = response ?? {};
-  console.log(headers);
   if (headers) {
     headers.forEach(([hdr, val]) => {
       res.appendHeader(hdr, val);

@@ -5,8 +5,8 @@ import { CycloneDxWebpackPlugin } from '@cyclonedx/webpack-plugin';
 import type { NextConfig } from 'next';
 import type * as Webpack from 'webpack';
 
-import { getProjectIdFromPackageJson } from '../src/env/project';
-import { getSentryWebpackDefines } from '../src/sentry/sentry-next-config';
+import { getProjectIdFromPackageJson } from '../src/env/project.ts';
+import { getSentryWebpackDefines } from './sentry-next-config.ts';
 
 const isProd = process.env.NODE_ENV === 'production';
 const standaloneBuild = process.env.NEXTJS_STANDALONE_BUILD === '1';
@@ -16,6 +16,7 @@ const isCoverageEnabled = process.env.CODE_COVERAGE === '1';
 
 export function getNextConfig(projectRoot: string): NextConfig {
   const config: NextConfig = {
+    reactCompiler: true,
     assetPrefix: prodAssetPrefix,
     output: standaloneBuild ? 'standalone' : undefined,
     typescript: {
@@ -51,7 +52,7 @@ export function getNextConfig(projectRoot: string): NextConfig {
               canonicalImport: ['@emotion/styled', 'default'],
               styledBaseImport: ['@common/themes/styled', 'styled'],
             },
-          }
+          },
         },
       },
       define: {
@@ -102,11 +103,17 @@ export function getNextConfig(projectRoot: string): NextConfig {
       // If a fixed Build ID was not provided, fall back to the default implementation.
       return null;
     },
+    turbopack: {
+      resolveAlias: {
+        '@common/*': './kausal_common/src/*',
+        '@/*': './src/*',
+      },
+    },
     webpack: (cfg: Webpack.Configuration, context) => {
       const { isServer, dev, nextRuntime } = context;
       const isEdge = isServer && nextRuntime === 'edge';
       const _webpack = context.webpack as typeof Webpack;
-      if (!cfg.resolve || !cfg.resolve.alias || !Array.isArray(cfg.plugins))
+      if (!cfg.resolve?.alias || !Array.isArray(cfg.plugins))
         throw new Error('cfg.resolve not defined');
       cfg.resolve.extensionAlias = {
         '.js': ['.ts', '.js'],
@@ -123,6 +130,7 @@ export function getNextConfig(projectRoot: string): NextConfig {
         // Stub out Node.js built-ins for client bundle; loadMessages.ts is
         // imported dynamically from _app.tsx but only executed server-side.
         cfg.resolve.fallback = {
+          // eslint-disable-next-line @typescript-eslint/no-misused-spread
           ...cfg.resolve.fallback,
           fs: false,
           path: false,
@@ -153,7 +161,7 @@ export function getNextConfig(projectRoot: string): NextConfig {
         cfg.output!.devtoolModuleFilenameTemplate = (info) => {
           const loaders = info.loaders ? `?${info.loaders}` : '';
           if (fs.existsSync(info.absoluteResourcePath)) {
-            return `${info.absoluteResourcePath}`;
+            return info.absoluteResourcePath;
           }
           return `webpack://${info.namespace}/${info.resourcePath}${loaders}`;
         };
@@ -167,7 +175,7 @@ export function getNextConfig(projectRoot: string): NextConfig {
               outputLocation: path.relative(webpackOutputPath, sbomOutputPath),
               rootComponentVersion: `1.0.0-${buildVersion}`,
               rootComponentAutodetect: false,
-              rootComponentName: `${getProjectIdFromPackageJson(context.dir)}-${sbomComponent}`,
+              rootComponentName: `${getProjectIdFromPackageJson(context.dir) as string}-${sbomComponent}`,
               includeWellknown: false,
             })
           );
@@ -179,14 +187,14 @@ export function getNextConfig(projectRoot: string): NextConfig {
   return config;
 }
 
-export function getCommonDefines(projectRoot: string, stringify: boolean = true) {
-  function maybeStringify(value: string) {
+export function getCommonDefines(projectRoot: string, stringify = true) {
+  function maybeStringify(value: string): string {
     return stringify ? JSON.stringify(value) : value;
   }
 
   const defines = {
     'globalThis.__DEV__': isProd ? 'false' : 'true',
-    'process.env.PROJECT_ID': maybeStringify(getProjectIdFromPackageJson(projectRoot)),
+    'process.env.PROJECT_ID': maybeStringify(getProjectIdFromPackageJson(projectRoot) as string),
     'process.env.NEXTJS_ASSET_PREFIX': maybeStringify(prodAssetPrefix || ''),
     ...getSentryWebpackDefines(stringify),
   };

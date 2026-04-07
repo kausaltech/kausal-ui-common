@@ -1,9 +1,9 @@
 /* istanbul ignore file */
 import type { Metadata } from 'next';
 
-import type * as LoggingModule from '../logging';
-import { getProjectId } from './static';
-import { coerceToBool, envToBool } from './utils';
+import type * as LoggingModule from '../logging/index.ts';
+import { getProjectId } from './static.ts';
+import { coerceToBool, envToBool } from './utils.ts';
 
 const isServer = typeof window === 'undefined';
 const isLocalDev = process.env.NODE_ENV === 'development';
@@ -60,6 +60,12 @@ type RuntimeConfig = {
   sentrySpotlightUrl: string | null;
 };
 
+declare global {
+  interface Window {
+    [WINDOW_PUBLIC_ENV_KEY]?: Record<string, string>;
+  }
+}
+
 function ensureKnownDeploymentType(val: string): DeploymentType {
   if (!KNOWN_DEPLOYMENT_TYPES.includes(val)) return 'development';
   return val as DeploymentType;
@@ -73,11 +79,11 @@ function env(key: string) {
     throw new Error(`Unknown public environment variable: ${key}`);
   }
   let publicEnv: Record<string, string>;
-  if (!(WINDOW_PUBLIC_ENV_KEY in window)) {
+  if (!window[WINDOW_PUBLIC_ENV_KEY]) {
     publicEnv = readPublicEnvFromMeta();
     window[WINDOW_PUBLIC_ENV_KEY] = publicEnv;
   } else {
-    publicEnv = window[WINDOW_PUBLIC_ENV_KEY] as Record<string, string>;
+    publicEnv = window[WINDOW_PUBLIC_ENV_KEY];
   }
   return publicEnv[key];
 }
