@@ -1,29 +1,19 @@
-//@ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
-/**
- * @import { JSONSchemaForNPMPackageJsonFiles } from '@schemastore/package';
- * */
+import type { JSONSchemaForNPMPackageJsonFiles } from '@schemastore/package';
+
+import type { ProjectId } from './static';
 
 const KNOWN_PROJECTS = ['watch-ui', 'paths-ui', '@kausal/nzc-data-studio'];
 
-/**
- * @param {string} basePath
- * @returns {import('@schemastore/package').JSONSchemaForNPMPackageJsonFiles}
- */
-export function getPackageData(basePath) {
+export function getPackageData(basePath: string): JSONSchemaForNPMPackageJsonFiles {
   const contents = fs.readFileSync(path.join(basePath, 'package.json'), 'utf8');
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const packageJson = /** @type {JSONSchemaForNPMPackageJsonFiles} */ (JSON.parse(contents));
+  const packageJson = JSON.parse(contents) as JSONSchemaForNPMPackageJsonFiles;
   return packageJson;
 }
 
-/**
- * @param {string} basePath
- * @returns {import('./static').ProjectId}
- */
-export function getProjectIdFromPackageJson(basePath) {
+export function getProjectIdFromPackageJson(basePath: string): ProjectId {
   if (typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'edge') {
     throw new Error('getProjectIdFromPackageJson can only be called from the server');
   }

@@ -10,9 +10,9 @@ import {
   API_SENTRY_TUNNEL_PATH,
   HEALTH_CHECK_PUBLIC_PATH,
   SENTRY_TUNNEL_PUBLIC_PATH,
-} from '../constants/routes.mjs';
-import { getSpotlightUrl } from '../env/runtime';
-import { envToBool } from '../env/utils';
+} from '../src/constants/routes.mjs';
+import { getSpotlightUrl } from '../src/env/runtime.ts';
+import { envToBool } from '../src/env/utils.ts';
 
 const sentryAuthToken = secrets.SENTRY_AUTH_TOKEN || process.env.SENTRY_AUTH_TOKEN;
 
@@ -55,7 +55,7 @@ export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
       ],
       treeshake: {
         removeDebugLogging: !sentryDebug,
-      }
+      },
     },
     telemetry: false,
     // Automatically tree-shake Sentry logger statements to reduce bundle size
@@ -69,7 +69,7 @@ export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
   return withSentryConfig(configIn, sentryConfig);
 }
 
-export function getSentryWebpackDefines(stringify: boolean = true): Record<string, string> {
+export function getSentryWebpackDefines(stringify = true): Record<string, string> {
   const defines: Record<string, string> = {};
   function setIfDefined(key: string, value: string | undefined) {
     if (!value) return;

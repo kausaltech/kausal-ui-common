@@ -1,20 +1,16 @@
 /* istanbul ignore file */
-//@ts-check
 
 const FALSY_ENV_VALUES = new Set(['false', 'f', 'n', 'no', 'off', '0']);
 const TRUTHY_ENV_VALUES = new Set(['true', 't', 'y', 'yes', 'on', '1']);
 
-/**
- * @param {unknown} value
- * @returns {boolean | null}
- */
-export function coerceToBool(value) {
+export function coerceToBool(value: unknown): boolean | null {
   if (value === null || value === undefined) {
     return null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-base-to-string
-  const strValue = String(value).toLowerCase().trim();
+  const strValue = String(value as unknown)
+    .toLowerCase()
+    .trim();
   if (!strValue.length) return null;
   if (FALSY_ENV_VALUES.has(strValue)) {
     return false;
@@ -25,12 +21,7 @@ export function coerceToBool(value) {
   return null;
 }
 
-/**
- * @param {unknown} value
- * @param {boolean} defaultValue
- * @returns {boolean}
- */
-export function envToBool(value, defaultValue) {
+export function envToBool(value: unknown, defaultValue: boolean): boolean {
   const boolValue = coerceToBool(value);
   if (boolValue !== null) return boolValue;
   return defaultValue;
