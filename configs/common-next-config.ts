@@ -130,7 +130,6 @@ export function getNextConfig(projectRoot: string): NextConfig {
           minimize: false, // do not minify server bundle for easier debugging
         };
         cfg.target = 'node24';
-        console.log(cfg.output);
         cfg.output = {
           ...cfg.output!,
           environment: {

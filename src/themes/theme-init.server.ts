@@ -1,11 +1,11 @@
 import type { Theme } from '@kausal/themes/types';
-import { getLogger } from '@common/logging';
 
+import { getLogger } from '@common/logging';
 
 export async function loadTheme(themeIdentifier: string): Promise<Theme> {
   let themeProps: Theme;
   const logger = getLogger('theme');
-  const fs = await import('node:fs');
+  const fs = await import('fs');
 
   const THEME_PATH = './public/static/themes';
 
@@ -14,7 +14,7 @@ export async function loadTheme(themeIdentifier: string): Promise<Theme> {
       encoding: 'utf8',
     });
     return JSON.parse(theme) as Theme;
-  };
+  }
 
   try {
     themeProps = await readThemeFile(themeIdentifier);
