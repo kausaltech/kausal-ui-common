@@ -69,9 +69,10 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
     MuiInputBase: {
       styleOverrides: {
         root: {
-          border: `${theme.inputBorderWidth} solid ${theme.graphColors.grey030}`,
+          border: `${theme.inputBorderWidth} solid ${theme.themeColors.dark}`,
+          borderRadius: theme.inputBorderRadius,
           '&:hover': {
-            borderColor: theme.graphColors.grey050,
+            borderColor: theme.themeColors.dark,
           },
           '&.Mui-focused': {
             borderColor: theme.inputBtnFocusColor,
@@ -117,6 +118,11 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
     MuiChip: {
       styleOverrides: {
         root: {
+          '.MuiSvgIcon-root': {
+            // Override global pointer-events: none on svgs
+            pointerEvents: 'initial',
+          },
+
           '&.MuiChip-sizeSmall': {
             height: 20,
           },
