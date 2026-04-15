@@ -501,7 +501,7 @@ function createMainSeries(
               [
                 {
                   name: forecastTitle,
-                  xAxis: forecastAreaStartIndex,
+                  xAxis: forecastAreaStartIndex - (chartType === 'area' ? 1 : 0), // Adjust for bar width
                 },
                 {
                   x: '100%',
@@ -561,7 +561,8 @@ function createMainSeries(
       if (!hasForecast) return solidColor;
       const headerRow = dataset[datasetIndices.data].source![0];
       const totalXCategories = headerRow.length - 1; // subtract 'Category' column
-      const forecastRatio = forecastAreaStartIndex / Math.max(totalXCategories - 1, 1);
+      const forecastRatio =
+        Math.max(0, forecastAreaStartIndex - 1) / Math.max(totalXCategories - 1, 1);
       return {
         type: 'linear' as const,
         x: 0,
