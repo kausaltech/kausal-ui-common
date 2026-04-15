@@ -2,7 +2,6 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import type { NextApiRequest, NextApiResponse } from 'next/types';
 
-import type { BaseHttpLink } from '@apollo/client/link/http/BaseHttpLink';
 import { propagation } from '@opentelemetry/api';
 import { captureException, startSpan } from '@sentry/nextjs';
 
@@ -20,6 +19,14 @@ import {
   getClientCookiesFromBackendResponse,
 } from '@common/utils/cookies';
 
+// Matches the shape of a GraphQL request body (Apollo's BaseHttpLink.Body)
+type GraphQLRequestBody = {
+  operationName?: string;
+  query?: string;
+  variables?: Record<string, unknown>;
+  extensions?: Record<string, unknown>;
+};
+
 const PASS_HEADERS = [
   PATHS_INSTANCE_IDENTIFIER_HEADER,
   PATHS_INSTANCE_HOSTNAME_HEADER,
@@ -30,7 +37,7 @@ const PASS_HEADERS = [
   'referer',
 ];
 
-type Body = BaseHttpLink.Body;
+type Body = GraphQLRequestBody;
 
 function headersFromApiRequest(req: NextApiRequest): Headers {
   const headerList = Object.fromEntries(
@@ -81,6 +88,11 @@ function getResponder(res: NextApiResponse | undefined): Responder {
   return respondWithStatus;
 }
 
+export type ProxyOptions = {
+  /** OAuth access token to inject as a Bearer Authorization header */
+  accessToken?: string;
+};
+
 export async function proxyGraphQLRequest(
   req: NextApiRequest,
   apiType: APIType,
@@ -88,7 +100,8 @@ export async function proxyGraphQLRequest(
 ): Promise<NextResponse>;
 export async function proxyGraphQLRequest(
   req: NextRequest,
-  apiType: APIType
+  apiType: APIType,
+  options?: ProxyOptions
 ): Promise<NextResponse>;
 
 /**
@@ -98,14 +111,22 @@ export async function proxyGraphQLRequest(
 export default async function proxyGraphQLRequest(
   req: NextApiRequest | NextRequest,
   apiType: APIType,
-  res?: NextApiResponse
+  resOrOptions?: NextApiResponse | ProxyOptions
 ): Promise<NextResponse | void> {
+  let res: NextApiResponse | undefined;
+  let options: ProxyOptions | undefined;
+  if (resOrOptions && 'status' in resOrOptions) {
+    res = resOrOptions;
+  } else {
+    options = resOrOptions;
+  }
   const incomingHeaders = req instanceof Request ? req.headers : headersFromApiRequest(req);
-  const incomingRequest = (req instanceof Request ? await req.json() : req.body) as Body;
+  const incomingRequest: Body =
+    req instanceof Request ? ((await req.json()) as Body) : (req.body as Body);
   const operationName = incomingRequest.operationName || '<unknown>';
   const logger = getLogger({
     name: 'graphql-proxy',
-    request: req,
+    request: req as NextRequest,
     bindings: {
       'graphql.operation.name': operationName,
     },
@@ -119,9 +140,7 @@ export default async function proxyGraphQLRequest(
   }
 
   if (envToBool(process.env.OTEL_DEBUG, false)) {
-    const debugHeaders = Array.from(
-      incomingHeaders.entries().map(([key, value]) => `${key}: ${value}`)
-    );
+    const debugHeaders = [...incomingHeaders.entries()].map(([key, value]) => `${key}: ${value}`);
     debugHeaders.sort();
     logger.debug(`Incoming headers:\n${debugHeaders.join('\n')}`);
   }
@@ -134,6 +153,10 @@ export default async function proxyGraphQLRequest(
     const val = incomingHeaders.get(h);
     if (!val) continue;
     backendHeaders[h] = val;
+  }
+
+  if (options?.accessToken) {
+    backendHeaders['authorization'] = `Bearer ${options.accessToken}`;
   }
 
   // Trace propagation headers are passed through automatically.
@@ -183,13 +206,16 @@ export default async function proxyGraphQLRequest(
   // Do the fetch from the backend
   let backendResponse: Response;
   try {
-    backendResponse = await startSpan({ op: 'graphql.request', name: operationName }, () => {
-      return fetch(url, {
-        method: 'POST',
-        headers: backendHeaders,
-        body: JSON.stringify(incomingRequest),
-      });
-    });
+    backendResponse = await startSpan(
+      { op: 'graphql.request', name: operationName },
+      (): Promise<Response> => {
+        return fetch(url, {
+          method: 'POST',
+          headers: backendHeaders,
+          body: JSON.stringify(incomingRequest),
+        });
+      }
+    );
   } catch (error) {
     captureException(error);
     logger.error(error, 'Failed to proxy GraphQL request');
