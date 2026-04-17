@@ -155,24 +155,41 @@ export default function DimensionalNodeVisualisation({
     : null;
 
   // If we have category filters active, let's add them to the viz subtitle
-  const activeCategoryLabels: { dimension: string; categories: string[] }[] = [];
+  // Groups trump categories, so we check for groups first
+  const activeCategoryLabels: {
+    dimension: string;
+    categories: string[];
+    showDimension: boolean;
+  }[] = [];
   for (const [key, value] of Object.entries(sliceConfig.categories)) {
-    if (value?.categories?.length && value.categories.length > 0) {
+    const dim = parsedMetric.dimsById.get(key);
+    if (value?.groups?.length) {
       activeCategoryLabels.push({
-        dimension: parsedMetric.dimsById.get(key)?.label ?? '',
+        dimension: dim?.label ?? '',
+        categories: value.groups.map((groupId) => dim?.groupsById.get(groupId)?.label ?? ''),
+        showDimension: false,
+      });
+    } else if (value?.categories?.length) {
+      activeCategoryLabels.push({
+        dimension: dim?.label ?? '',
         categories: value.categories.map((catId) => {
-          for (const dim of parsedMetric.dimensions) {
-            const found = dim.categories.find((c) => c.id === catId);
+          for (const d of parsedMetric.dimensions) {
+            const found = d.categories.find((c) => c.id === catId);
             if (found) return found.label;
           }
           return '';
         }),
+        showDimension: true,
       });
     }
   }
 
   const subtitle = activeCategoryLabels
-    .map((dim) => `${dim.dimension}: ${dim.categories.join(' & ')}`)
+    .map((dim) =>
+      dim.showDimension
+        ? `${dim.dimension}: ${dim.categories.join(' & ')}`
+        : dim.categories.join(' & ')
+    )
     .join(', ')
     .trim();
 
@@ -426,6 +443,7 @@ export default function DimensionalNodeVisualisation({
           forecastTitle={forecastTitle}
           stackable={metric.stackable}
           chartType={chartType}
+          predictionLabel={t('table-scenario-forecast')}
         />
         {withTools && <ToolsMenu cube={parsedMetric} sliceConfig={sliceConfig} t={t} />}
       </Box>
