@@ -38,6 +38,7 @@ export function getTraceLogBindings() {
 
 function addDynamicGlobalAttributes(_mergeObject: object, _level: number, logger: Logger) {
   const attrs = {
+    // @ts-expect-error - logger['noSpan'] is not typed
     ...(!logger['noSpan'] ? getTraceLogBindings() : {}),
   };
   return attrs;

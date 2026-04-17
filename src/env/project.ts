@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import type { JSONSchemaForNPMPackageJsonFiles } from '@schemastore/package';
 
-import type { ProjectId } from './static';
+import type { ProjectId } from './static.js';
 
 const KNOWN_PROJECTS = ['watch-ui', 'paths-ui', '@kausal/nzc-data-studio'];
 

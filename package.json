@@ -7,6 +7,8 @@
     "@apollo/client": ">=4",
     "@emotion/react": ">=11",
     "@emotion/styled": ">=11",
+    "@eslint/config-helpers": "^0.5.5",
+    "@eslint/core": "^1.2.1",
     "@kausal/themes": "*",
     "@mui/material": ">=7",
     "@mui/material-nextjs": ">=7",
@@ -26,6 +28,7 @@
     "@sentry/node": ">=10",
     "@sentry/opentelemetry": ">=10",
     "@sentry/vercel-edge": ">=10",
+    "@typescript-eslint/types": "^8.58.2",
     "ansi-styles": ">=6",
     "chalk": ">=5",
     "chroma-js": ">=3",
@@ -53,6 +56,9 @@
     "set-cookie-parser": ">=2"
   },
   "devDependencies": {
+    "@eslint/config-helpers": "^0.5.5",
+    "@eslint/core": "^1.2.1",
+    "@typescript-eslint/types": "^8.58.2",
     "eslint-config-next": "^16.2.1",
     "eslint-plugin-storybook": "^10.2.19",
     "next": "^16.2.0"
