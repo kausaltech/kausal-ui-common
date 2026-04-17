@@ -78,9 +78,6 @@ export function getMetricChange(
 /**
  * Sum the metric values of multiple nodes for a given year.
  */
-export function getOutcomeTotal(
-  nodes: { metric: NodeMetricInput }[],
-  year: number
-): number {
+export function getOutcomeTotal(nodes: { metric: NodeMetricInput }[], year: number): number {
   return nodes.reduce((acc, node) => acc + (getMetricValue(node, year) ?? 0), 0);
 }

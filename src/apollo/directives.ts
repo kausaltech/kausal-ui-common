@@ -1,5 +1,5 @@
-import type { ArgumentNode, DirectiveNode, VariableDefinitionNode } from 'graphql/language';
 import type * as graphqlModule from 'graphql';
+import type { ArgumentNode, DirectiveNode, VariableDefinitionNode } from 'graphql/language';
 
 export type DirectiveArg = {
   name: string;

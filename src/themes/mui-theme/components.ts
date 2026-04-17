@@ -1,7 +1,10 @@
-import type { Theme } from '@kausal/themes/types';
 import type { ComponentNameToClassKey, ComponentsProps, ThemeOptions } from '@mui/material/styles';
 
-type StyleOverrides<Name extends keyof ComponentNameToClassKey> = NonNullable<NonNullable<ComponentsProps[Name]>['style']>;
+import type { Theme } from '@kausal/themes/types';
+
+type StyleOverrides<Name extends keyof ComponentNameToClassKey> = NonNullable<
+  NonNullable<ComponentsProps[Name]>['style']
+>;
 
 export function getComponents(theme: Theme): ThemeOptions['components'] {
   return {

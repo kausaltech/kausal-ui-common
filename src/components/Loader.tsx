@@ -1,7 +1,8 @@
 import React from 'react';
 
-import styled from '@common/themes/styled';
 import { transparentize } from 'polished';
+
+import styled from '@common/themes/styled';
 
 export const KausalProgressDots = styled.div`
   width: 60px;

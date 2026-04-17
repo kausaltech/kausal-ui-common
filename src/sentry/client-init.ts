@@ -4,10 +4,7 @@ import * as Sentry from '@sentry/nextjs';
 import type { BrowserOptions } from '@sentry/nextjs';
 import type { Logger } from 'pino';
 
-import {
-  API_SENTRY_TUNNEL_PATH,
-  FAKE_SENTRY_DSN,
-} from '@common/constants/routes.mjs';
+import { API_SENTRY_TUNNEL_PATH, FAKE_SENTRY_DSN } from '@common/constants/routes.mjs';
 import { isLocalDev } from '@common/env';
 import {
   getAssetPrefix,
@@ -21,6 +18,7 @@ import {
 } from '@common/env/runtime';
 import { envToBool } from '@common/env/utils';
 import { getLogger } from '@common/logging/logger';
+
 import { initSentryCommon } from './common-init';
 
 function makeNullTransport(_options: BaseTransportOptions) {
@@ -68,7 +66,7 @@ export function initSentryBrowser() {
     tunnel: API_SENTRY_TUNNEL_PATH,
     sendDefaultPii: true,
     enabled: !!(envDsn || spotlightUrl),
-    maxValueLength: (!envDsn && spotlightUrl) ? 10000 : undefined,
+    maxValueLength: !envDsn && spotlightUrl ? 10000 : undefined,
     ignoreErrors: ['NEXT_NOT_FOUND'],
     parentSpanIsAlwaysRootSpan: false,
     tracesSampler(ctx: SamplingContext) {

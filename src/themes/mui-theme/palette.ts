@@ -1,5 +1,6 @@
-import type { Theme } from '@kausal/themes/types';
 import type { ThemeOptions } from '@mui/material/styles';
+
+import type { Theme } from '@kausal/themes/types';
 import { darken, lighten } from 'polished';
 
 export function getPalette(theme: Theme): ThemeOptions['palette'] {

@@ -1,6 +1,7 @@
-import { getDeploymentRegion } from '@common/env';
-import * as Sentry from '@sentry/nextjs';
 import type { Client } from '@sentry/core';
+import * as Sentry from '@sentry/nextjs';
+
+import { getDeploymentRegion } from '@common/env';
 
 export function initSentryCommon(_client: Client) {
   const scope = Sentry.getGlobalScope();
