@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import stringify from 'fast-safe-stringify';
-import type { DestinationStream, LoggerOptions as PinoLoggerOptions } from 'pino';
+import type { DestinationStream, LogDescriptor, LoggerOptions as PinoLoggerOptions } from 'pino';
 import type * as PinoPretty from 'pino-pretty';
 
 import { formatMessage, setupStyleMapping } from './chalk-logger';
@@ -29,8 +29,8 @@ export function setupNodeLogging(_options: PinoLoggerOptions): DestinationStream
         return '';
       },
     },
-    messageFormat: (log: LogRecord, _messageKey) => {
-      const { level, time, runtime, logger, msg, pid, hostname, ...rest } = log;
+    messageFormat: (log: LogDescriptor, _messageKey) => {
+      const { level, time, runtime, logger, msg, pid, hostname, ...rest } = log as LogRecord;
       const record = {
         level,
         time: new Date(time),
