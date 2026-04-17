@@ -1,5 +1,6 @@
-import type { Theme as BaseTheme } from '@kausal/themes/types';
 import { type Theme as MuiTheme, createTheme } from '@mui/material/styles';
+
+import type { Theme as BaseTheme } from '@kausal/themes/types';
 
 import { getComponents } from './components';
 import { getPalette } from './palette';

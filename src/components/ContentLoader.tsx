@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
-import styled from '@common/themes/styled';
-
 import { KausalProgressDots } from '@common/components/Loader';
+import styled from '@common/themes/styled';
 
 const Loader = styled.div`
   display: flex;

@@ -79,12 +79,10 @@ export const spotlightFetchIntegration = defineIntegration(_spotlightIntegration
 export function isSpotlightInteraction(event: Event): boolean {
   return Boolean(
     event.type === 'transaction' &&
-      event.spans &&
-      event.contexts &&
-      event.contexts.trace &&
-      event.contexts.trace.op === 'ui.action.click' &&
-      event.spans.some(
-        ({ description }) => description && description.includes('#sentry-spotlight')
-      )
+    event.spans &&
+    event.contexts &&
+    event.contexts.trace &&
+    event.contexts.trace.op === 'ui.action.click' &&
+    event.spans.some(({ description }) => description && description.includes('#sentry-spotlight'))
   );
 }
