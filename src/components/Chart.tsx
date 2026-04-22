@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import {
   BarChart,
@@ -92,6 +92,12 @@ const DEFAULT_STYLES: ECOption = {
   },
 };
 
+export type ChartHandle = {
+  getDataURL: (
+    ...args: Parameters<echarts.ECharts['getDataURL']>
+  ) => ReturnType<echarts.ECharts['getDataURL']> | undefined;
+};
+
 type Props = {
   isLoading: boolean;
   data?: echarts.EChartsCoreOption;
@@ -102,6 +108,7 @@ type Props = {
   withResizeLegend?: boolean;
   renderer?: 'svg' | 'canvas';
   locale?: string;
+  ref?: Ref<ChartHandle>;
 };
 
 export function Chart({
@@ -113,11 +120,20 @@ export function Chart({
   withResizeLegend = true,
   renderer = 'canvas',
   locale = 'en',
+  ref,
 }: Props) {
   const chartRef = useRef<echarts.ECharts | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const theme = useBaseTheme();
   const [isRendering, setIsRendering] = useState(true);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      getDataURL: (opts) => chartRef.current?.getDataURL(opts),
+    }),
+    []
+  );
 
   // Initialize the chart
   useEffect(() => {
