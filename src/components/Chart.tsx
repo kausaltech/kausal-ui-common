@@ -93,12 +93,9 @@ const DEFAULT_STYLES: ECOption = {
 };
 
 export type ChartHandle = {
-  getDataURL: (opts?: {
-    type?: 'png' | 'jpeg' | 'svg';
-    pixelRatio?: number;
-    backgroundColor?: string;
-    excludeComponents?: string[];
-  }) => string | undefined;
+  getDataURL: (
+    ...args: Parameters<echarts.ECharts['getDataURL']>
+  ) => ReturnType<echarts.ECharts['getDataURL']> | undefined;
 };
 
 type Props = {
