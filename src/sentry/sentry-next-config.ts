@@ -40,21 +40,24 @@ export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
       excludeDebugStatements: !sentryDebug,
       excludeReplayIframe: true,
     },
-    reactComponentAnnotation: {
-      enabled: true,
-    },
     telemetry: false,
-    // Automatically tree-shake Sentry logger statements to reduce bundle size
-    disableLogger: !sentryDebug,
-    excludeServerRoutes: [
-      API_HEALTH_CHECK_PATH,
-      HEALTH_CHECK_PUBLIC_PATH,
-      API_SENTRY_TUNNEL_PATH,
-      SENTRY_TUNNEL_PUBLIC_PATH,
-    ],
-    automaticVercelMonitors: false,
-    autoInstrumentMiddleware: false,
-    autoInstrumentServerFunctions: false,
+    webpack: {
+      reactComponentAnnotation: {
+        enabled: true,
+      },
+      treeshake: {
+        removeDebugLogging: !sentryDebug,
+      },
+      excludeServerRoutes: [
+        API_HEALTH_CHECK_PATH,
+        HEALTH_CHECK_PUBLIC_PATH,
+        API_SENTRY_TUNNEL_PATH,
+        SENTRY_TUNNEL_PUBLIC_PATH,
+      ],
+      automaticVercelMonitors: false,
+      autoInstrumentMiddleware: false,
+      autoInstrumentServerFunctions: false,
+    },
     sourcemaps: {
       deleteSourcemapsAfterUpload: false,
     },

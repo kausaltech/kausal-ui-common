@@ -19,9 +19,6 @@ export function getNextConfig(projectRoot: string): NextConfig {
   const config: NextConfig = {
     assetPrefix: prodAssetPrefix,
     output: standaloneBuild ? 'standalone' : undefined,
-    eslint: {
-      ignoreDuringBuilds: true,
-    },
     typescript: {
       ignoreBuildErrors: true,
     },
@@ -57,7 +54,7 @@ export function getNextConfig(projectRoot: string): NextConfig {
         : undefined,
     },
     reactStrictMode: true,
-    skipMiddlewareUrlNormalize: true,
+    skipProxyUrlNormalize: true,
     serverExternalPackages: ['pino'],
     outputFileTracingIncludes: standaloneBuild
       ? { '/': ['./node_modules/@kausal*/themes*/**'] }

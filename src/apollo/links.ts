@@ -9,6 +9,7 @@ import type { StartSpanOptions } from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
 import { Kind, type OperationDefinitionNode } from 'graphql';
 import type { Bindings } from 'pino';
+import { map } from 'rxjs/operators';
 
 import { isLocalDev, isProductionDeployment, isServer } from '@common/env';
 import { generateCorrelationID, getLogger } from '@common/logging';
@@ -45,7 +46,7 @@ const logOperation = new ApolloLink((operation, forward: NextLink) => {
 
   setContext({ ...ctx, start: Date.now(), logger: opLogger });
   opLogger.info(`Starting GraphQL request ${operationName}`);
-  return forward(operation).map((data) => {
+  return forward(operation).pipe(map((data) => {
     const context = operation.getContext() as DefaultApolloContext;
     const now = Date.now();
     const start = context.start;
@@ -70,7 +71,7 @@ const logOperation = new ApolloLink((operation, forward: NextLink) => {
       );
     }
     return data;
-  });
+  }));
 });
 
 export const logOperationLink = ApolloLink.from([logOperation, logErrorLink]);
@@ -144,7 +145,7 @@ export const createSentryLink = (uri: string) => {
           spanId: span.spanContext().spanId,
         };
       });
-      return forward(operation).map((result) => {
+      return forward(operation).pipe(map((result) => {
         if (result.errors) {
           span.setStatus({
             code: SPAN_STATUS_ERROR,
@@ -155,7 +156,7 @@ export const createSentryLink = (uri: string) => {
         }
         finish();
         return result;
-      });
+      }));
     });
   });
   return link;

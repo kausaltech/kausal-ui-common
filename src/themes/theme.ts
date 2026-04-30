@@ -18,10 +18,13 @@ export async function loadTheme(themeIdentifier: string): Promise<Theme> {
       return JSON.parse(theme) as Theme;
     };
   } else {
-    const THEME_PATH = '/public/static/themes';
+    const THEME_PATH = '/static/themes';
     readThemeFile = async (id: string) => {
-      const theme = (await import(/* @vite-ignore */ `${THEME_PATH}/${id}/theme.json`)) as { default: Theme };
-      return theme.default;
+      const response = await fetch(`${THEME_PATH}/${id}/theme.json`);
+      if (!response.ok) {
+        throw new Error(`Failed to load theme ${id}: ${response.status}`);
+      }
+      return (await response.json()) as Theme;
     };
   }
   try {

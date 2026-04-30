@@ -1,0 +1,1 @@
+export { loadTheme } from './theme';
