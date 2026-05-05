@@ -129,14 +129,16 @@ export function getNextConfig(projectRoot: string): NextConfig {
           ...cfg.optimization,
           minimize: false, // do not minify server bundle for easier debugging
         };
-        cfg.target = 'node24';
-        cfg.output = {
-          ...cfg.output!,
-          environment: {
-            ...(cfg.output!.environment ?? {}),
-            nodePrefixForCoreModules: true,
-          },
-        };
+        if (!isEdge) {
+          cfg.target = 'node24';
+          cfg.output = {
+            ...cfg.output!,
+            environment: {
+              ...(cfg.output!.environment ?? {}),
+              nodePrefixForCoreModules: true,
+            },
+          };
+        }
       } else {
         // Stub out Node.js built-ins for client bundle; loadMessages.ts is
         // imported dynamically from _app.tsx but only executed server-side.
