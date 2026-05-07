@@ -145,7 +145,7 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           '& .MuiTableHead-root': {
             backgroundColor: theme.tableHeadBg,
           } satisfies StyleOverrides<'MuiTable'>,
-          '& .MuiTableRow-root:hover': {
+          '& .MuiTableBody-root .MuiTableRow-root:hover': {
             backgroundColor: theme.tableHoverBg,
           } satisfies StyleOverrides<'MuiTable'>,
         },
