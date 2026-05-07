@@ -1,9 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import type { NextApiRequest } from 'next/types';
+import type { NextApiRequest, NextApiResponse } from 'next/types';
 
-import type { FetchResult } from '@apollo/client';
-import type { Body } from '@apollo/client/link/http/selectHttpOptionsAndBody';
 import { propagation } from '@opentelemetry/api';
 import { captureException, startSpan } from '@sentry/nextjs';
 
@@ -12,13 +10,22 @@ import {
   PATHS_INSTANCE_IDENTIFIER_HEADER,
   WILDCARD_DOMAINS_HEADER,
 } from '@common/constants/headers.mjs';
-import { getPathsGraphQLUrl, getWatchGraphQLUrl, isLocalDev } from '@common/env';
+import { getPathsGraphQLUrl, getWatchGraphQLUrl } from '@common/env';
+import { envToBool } from '@common/env/utils';
 import { getLogger } from '@common/logging/logger';
 import {
   type APIType,
   getApiCookies,
   getClientCookiesFromBackendResponse,
 } from '@common/utils/cookies';
+
+// Matches the shape of a GraphQL request body (Apollo's BaseHttpLink.Body)
+type GraphQLRequestBody = {
+  operationName?: string;
+  query?: string;
+  variables?: Record<string, unknown>;
+  extensions?: Record<string, unknown>;
+};
 
 const PASS_HEADERS = [
   PATHS_INSTANCE_IDENTIFIER_HEADER,
@@ -30,6 +37,8 @@ const PASS_HEADERS = [
   'referer',
 ];
 
+type Body = GraphQLRequestBody;
+
 function headersFromApiRequest(req: NextApiRequest): Headers {
   const headerList = Object.fromEntries(
     Object.entries(req.headers).filter(([_, v]) => v !== undefined) as [string, string][]
@@ -37,33 +46,107 @@ function headersFromApiRequest(req: NextApiRequest): Headers {
   return new Headers(headerList);
 }
 
+type HttpResponse = {
+  statusCode?: number;
+  statusText?: string;
+  headers?: [string, string][];
+};
+
+function respondWithStatus(data: Record<string, unknown>, response?: HttpResponse): NextResponse {
+  const headers = response?.headers ?? undefined;
+  return NextResponse.json(data, {
+    status: response?.statusCode ?? 200,
+    statusText: response?.statusText ?? undefined,
+    headers,
+  });
+}
+
+function respondWithStatusLegacy(
+  res: NextApiResponse,
+  data: Record<string, unknown>,
+  response?: HttpResponse
+): NextResponse {
+  const { statusCode, headers, statusText } = response ?? {};
+  if (headers) {
+    headers.forEach(([hdr, val]) => {
+      res.appendHeader(hdr, val);
+    });
+  }
+  if (statusText) {
+    res.statusMessage = statusText;
+  }
+  res.status(statusCode ?? 200).json(data);
+  return new NextResponse();
+}
+
+type Responder = (data: Record<string, unknown>, response?: HttpResponse) => NextResponse;
+
+function getResponder(res: NextApiResponse | undefined): Responder {
+  if (res) {
+    return (data, response) => respondWithStatusLegacy(res, data, response);
+  }
+  return respondWithStatus;
+}
+
+export type ProxyOptions = {
+  /** OAuth access token to inject as a Bearer Authorization header */
+  accessToken?: string;
+};
+
+export async function proxyGraphQLRequest(
+  req: NextApiRequest,
+  apiType: APIType,
+  res: NextApiResponse
+): Promise<NextResponse>;
+export async function proxyGraphQLRequest(
+  req: NextRequest,
+  apiType: APIType,
+  options?: ProxyOptions
+): Promise<NextResponse>;
+
 /**
  * Simple proxy which handles our GraphQL requests
  * to prevent CORS issues and attach auth headers.
  */
 export default async function proxyGraphQLRequest(
   req: NextApiRequest | NextRequest,
-  apiType: APIType
-): Promise<NextResponse> {
+  apiType: APIType,
+  resOrOptions?: NextApiResponse | ProxyOptions
+): Promise<NextResponse | void> {
+  let res: NextApiResponse | undefined;
+  let options: ProxyOptions | undefined;
+  if (resOrOptions && 'status' in resOrOptions) {
+    res = resOrOptions;
+  } else {
+    options = resOrOptions;
+  }
   const incomingHeaders = req instanceof Request ? req.headers : headersFromApiRequest(req);
-  const incomingRequest = (req instanceof Request ? await req.json() : req.body) as Body;
+  const incomingRequest: Body =
+    req instanceof Request ? ((await req.json()) as Body) : (req.body as Body);
   const operationName = incomingRequest.operationName || '<unknown>';
   const logger = getLogger({
     name: 'graphql-proxy',
-    request: req,
+    request: req as NextRequest,
     bindings: {
       'graphql.operation.name': operationName,
     },
   });
+  const respond = getResponder(res);
   if (req.method !== 'POST') {
-    return NextResponse.json({ error: 'HTTP method not allowed' }, { status: 405 });
+    return respond({ error: 'HTTP method not allowed' }, { statusCode: 405 });
   }
   if (incomingHeaders.get('content-type') !== 'application/json') {
-    return NextResponse.json({ error: 'Invalid Content-Type header' }, { status: 415 });
+    return respond({ error: 'Invalid Content-Type header' }, { statusCode: 415 });
+  }
+
+  if (envToBool(process.env.OTEL_DEBUG, false)) {
+    const debugHeaders = [...incomingHeaders.entries()].map(([key, value]) => `${key}: ${value}`);
+    debugHeaders.sort();
+    logger.debug(`Incoming headers:\n${debugHeaders.join('\n')}`);
   }
 
   // Determine headers to send to the backend.
-  const backendHeaders = {};
+  const backendHeaders: Record<string, string> = {};
 
   for (const h of PASS_HEADERS) {
     if (!incomingHeaders.has(h)) continue;
@@ -72,11 +155,15 @@ export default async function proxyGraphQLRequest(
     backendHeaders[h] = val;
   }
 
+  if (options?.accessToken) {
+    backendHeaders['authorization'] = `Bearer ${options.accessToken}`;
+  }
+
   // Trace propagation headers are passed through automatically.
   for (const field of propagation.fields()) {
     let val = incomingHeaders.get(field);
     if (Array.isArray(val)) {
-      logger.warn(`Propagation field ${field} is array`, { field, val });
+      logger.warn(`Propagation field ${field} is array: ${JSON.stringify(val)}`);
       continue;
     }
     if (!val) continue;
@@ -107,21 +194,33 @@ export default async function proxyGraphQLRequest(
     backendHeaders['X-Forwarded-For'] = remoteIp;
   }
 
-  if (isLocalDev && false) {
-    logger.info(req.headers, 'Headers from client');
-    logger.info(backendHeaders, 'Headers to backend');
+  if (envToBool(process.env.OTEL_DEBUG, false)) {
+    const debugHeaders = Array.from(
+      Object.entries(backendHeaders).map(([key, value]) => `${key}: ${value}`)
+    );
+    debugHeaders.sort();
+    logger.debug(`Headers to backend:\n${debugHeaders.join('\n')}`);
   }
 
   const url = apiType === 'watch' ? getWatchGraphQLUrl() : getPathsGraphQLUrl();
   // Do the fetch from the backend
-  const backendResponse = await startSpan({ op: 'graphql.request', name: operationName }, () => {
-    return fetch(url, {
-      method: 'POST',
-      headers: backendHeaders,
-      body: JSON.stringify(incomingRequest),
-    });
-  });
-
+  let backendResponse: Response;
+  try {
+    backendResponse = await startSpan(
+      { op: 'graphql.request', name: operationName },
+      (): Promise<Response> => {
+        return fetch(url, {
+          method: 'POST',
+          headers: backendHeaders,
+          body: JSON.stringify(incomingRequest),
+        });
+      }
+    );
+  } catch (error) {
+    captureException(error);
+    logger.error(error, 'Failed to proxy GraphQL request');
+    return respond({ errors: [{ message: 'Backend request failed' }] }, { statusCode: 500 });
+  }
   const duration = new Date().getTime() - startedAt.getTime();
   logger.info(
     { 'http.response.duration': duration, 'http.response.status_code': backendResponse.status },
@@ -143,10 +242,10 @@ export default async function proxyGraphQLRequest(
 
   if (!backendResponse.ok) {
     logger.error(`Backend responded with HTTP ${backendResponse.status}`);
-    let data: object | undefined, errorMessage: string | undefined;
+    let data: Record<string, unknown> | undefined, errorMessage: string | undefined;
     try {
       if (backendResponse.headers.get('content-type') === 'application/json') {
-        data = (await backendResponse.json()) as object;
+        data = (await backendResponse.json()) as Record<string, unknown>;
       }
     } catch (error) {
       captureException(error);
@@ -155,29 +254,29 @@ export default async function proxyGraphQLRequest(
       errorMessage = await backendResponse.text();
       data = { errors: [{ message: errorMessage }] };
     }
-    return NextResponse.json(data, {
-      status: backendResponse.status,
+    return respond(data, {
+      statusCode: backendResponse.status,
       statusText: backendResponse.statusText,
       headers: responseHeaders,
     });
   }
 
   try {
-    const data = (await backendResponse.json()) as FetchResult;
-    return NextResponse.json(data, {
-      headers: responseHeaders,
-      status: backendResponse.status,
+    const data = (await backendResponse.json()) as Record<string, unknown>;
+    return respond(data, {
+      statusCode: backendResponse.status,
       statusText: backendResponse.statusText,
+      headers: responseHeaders,
     });
   } catch (error) {
     // An error occurred parsing the error response as JSON
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
+    return respond(
       {
         errors: [{ message: `Response is invalid JSON: ${message}` }],
       },
       {
-        status: 500,
+        statusCode: 500,
         statusText: 'Internal Server Error',
         headers: responseHeaders,
       }

@@ -126,7 +126,11 @@ export default class LRUCache<K, V> implements NodeChain {
     this._map.forEach((node, key) => {
       const age = now - node.lastAccess;
 
-      console.log(' ', key, `(age: ${age / 1000}s, ttl: ${node.ttl / 1000}s) -> ${printValueCb(node.value as V)}`);
+      console.log(
+        ' ',
+        key,
+        `(age: ${age / 1000}s, ttl: ${node.ttl / 1000}s) -> ${printValueCb(node.value as V)}`
+      );
     });
   }
 

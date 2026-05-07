@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 
 import type * as ChalkLogger from './chalk-logger';
-import { getGlobalContext, getRootLoggerOptions, getSpanContext } from './init';
+import { getGlobalContext, getRootLoggerOptions, getTraceLogBindings } from './init';
 import { getRootLogger, isPrettyLogger, setRootLogger } from './logger';
 
 export function initBrowserRootLogger() {
@@ -18,7 +18,7 @@ export function initBrowserRootLogger() {
     const { setupBrowserLogging } = require('./chalk-logger') as typeof ChalkLogger;
     setupBrowserLogging(options);
     options.browser!.formatters!.log = (object) => {
-      const attrs = getSpanContext();
+      const attrs = getTraceLogBindings();
       return {
         ...attrs,
         ...object,

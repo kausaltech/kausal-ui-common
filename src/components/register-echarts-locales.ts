@@ -3,7 +3,8 @@ import * as echarts from 'echarts/core';
 type LocaleOption = Parameters<typeof echarts.registerLocale>[1];
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const load = (name: string) => (require(`echarts/i18n/${name}`) as { default: LocaleOption }).default;
+const load = (name: string) =>
+  (require(`echarts/i18n/${name}`) as { default: LocaleOption }).default;
 
 const cs = load('langCS');
 const de = load('langDE');

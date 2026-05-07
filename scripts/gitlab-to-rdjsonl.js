@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /**
  * Transform GitLab format linter diagnostics to reviewdog RDJSONL format.
  * Reads GitLab format JSON from stdin and outputs RDJSONL to stdout.
  */
-import { readFileSync } from 'fs';
+
+/* eslint-disable @typescript-eslint/use-unknown-in-catch-callback-variable */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 /**
  * Map GitLab severity to RDJSONL severity

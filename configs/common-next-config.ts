@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -6,8 +5,8 @@ import { CycloneDxWebpackPlugin } from '@cyclonedx/webpack-plugin';
 import type { NextConfig } from 'next';
 import type * as Webpack from 'webpack';
 
-import { getProjectIdFromPackageJson } from '../src/env/project.cjs';
-import { getSentryWebpackDefines } from '../src/sentry/sentry-next-config';
+import { getProjectIdFromPackageJson } from '../src/env/project.ts';
+import { getSentryWebpackDefines } from './sentry-next-config.ts';
 
 const isProd = process.env.NODE_ENV === 'production';
 const standaloneBuild = process.env.NEXTJS_STANDALONE_BUILD === '1';
@@ -19,21 +18,49 @@ export function getNextConfig(projectRoot: string): NextConfig {
   const config: NextConfig = {
     assetPrefix: prodAssetPrefix,
     output: standaloneBuild ? 'standalone' : undefined,
-    eslint: {
-      ignoreDuringBuilds: true,
-    },
     typescript: {
       ignoreBuildErrors: true,
     },
     distDir: isCoverageEnabled ? '.next-coverage' : undefined,
     productionBrowserSourceMaps: true,
     compiler: {
-      emotion: true,
+      emotion: {
+        autoLabel: 'always',
+        labelFormat: '[filename]-[local]',
+        importMap: {
+          '@mui/system': {
+            styled: {
+              canonicalImport: ['@emotion/styled', 'default'],
+              styledBaseImport: ['@mui/system', 'styled'],
+            },
+          },
+          '@mui/material/styles': {
+            styled: {
+              canonicalImport: ['@emotion/styled', 'default'],
+              styledBaseImport: ['@mui/material/styles', 'styled'],
+            },
+          },
+          '@mui/material': {
+            styled: {
+              canonicalImport: ['@emotion/styled', 'default'],
+              styledBaseImport: ['@mui/material', 'styled'],
+            },
+          },
+          '@common/themes/styled': {
+            styled: {
+              canonicalImport: ['@emotion/styled', 'default'],
+              styledBaseImport: ['@common/themes/styled', 'styled'],
+            },
+          },
+        },
+      },
       define: {
         ...getCommonDefines(projectRoot, false),
       },
     },
     experimental: {
+      serverMinification: false,
+      serverSourceMaps: true,
       optimizePackageImports: ['lodash'],
       // forceSwcTransforms: !envToBool(process.env.CODE_COVERAGE, false),
       // reactCompiler: true,
@@ -57,7 +84,14 @@ export function getNextConfig(projectRoot: string): NextConfig {
         : undefined,
     },
     reactStrictMode: true,
-    skipMiddlewareUrlNormalize: true,
+    skipProxyUrlNormalize: true,
+    // Bundle all node_modules for server-side Pages Router (like App Router).
+    // Without this, Turbopack externalizes most packages but @mui/material
+    // is force-bundled (via optimizePackageImports), pulling in its own
+    // inline copy of @emotion/react. The app code's externalized emotion
+    // creates a separate EmotionCacheContext, causing css-/mui- class
+    // prefix mismatch and hydration errors.
+    bundlePagesRouterDependencies: true,
     serverExternalPackages: ['pino'],
     outputFileTracingIncludes: standaloneBuild
       ? { '/': ['./node_modules/@kausal*/themes*/**'] }
@@ -68,12 +102,25 @@ export function getNextConfig(projectRoot: string): NextConfig {
       // If a fixed Build ID was not provided, fall back to the default implementation.
       return null;
     },
+    turbopack: {
+      resolveAlias: {
+        '@common/*': './kausal_common/src/*',
+        '@/*': './src/*',
+        fs: 'node:fs',
+        path: 'node:path',
+      },
+    },
     webpack: (cfg: Webpack.Configuration, context) => {
       const { isServer, dev, nextRuntime } = context;
       const isEdge = isServer && nextRuntime === 'edge';
       const _webpack = context.webpack as typeof Webpack;
-      if (!cfg.resolve || !cfg.resolve.alias || !Array.isArray(cfg.plugins))
+      if (!cfg.resolve?.alias || !Array.isArray(cfg.plugins))
         throw new Error('cfg.resolve not defined');
+      cfg.resolve.alias = {
+        ...(cfg.resolve.alias as Record<string, string>),
+        '@common': path.join(projectRoot, 'kausal_common/src'),
+        '@': path.join(projectRoot, 'src'),
+      };
       cfg.resolve.extensionAlias = {
         '.js': ['.ts', '.js'],
       };
@@ -83,12 +130,20 @@ export function getNextConfig(projectRoot: string): NextConfig {
           minimize: false, // do not minify server bundle for easier debugging
         };
         if (!isEdge) {
-          cfg.target = 'node22';
+          cfg.target = 'node24';
+          cfg.output = {
+            ...cfg.output!,
+            environment: {
+              ...(cfg.output!.environment ?? {}),
+              nodePrefixForCoreModules: true,
+            },
+          };
         }
       } else {
         // Stub out Node.js built-ins for client bundle; loadMessages.ts is
         // imported dynamically from _app.tsx but only executed server-side.
         cfg.resolve.fallback = {
+          // eslint-disable-next-line @typescript-eslint/no-misused-spread
           ...cfg.resolve.fallback,
           fs: false,
           path: false,
@@ -119,7 +174,7 @@ export function getNextConfig(projectRoot: string): NextConfig {
         cfg.output!.devtoolModuleFilenameTemplate = (info) => {
           const loaders = info.loaders ? `?${info.loaders}` : '';
           if (fs.existsSync(info.absoluteResourcePath)) {
-            return `${info.absoluteResourcePath}`;
+            return info.absoluteResourcePath;
           }
           return `webpack://${info.namespace}/${info.resourcePath}${loaders}`;
         };
@@ -133,7 +188,7 @@ export function getNextConfig(projectRoot: string): NextConfig {
               outputLocation: path.relative(webpackOutputPath, sbomOutputPath),
               rootComponentVersion: `1.0.0-${buildVersion}`,
               rootComponentAutodetect: false,
-              rootComponentName: `${getProjectIdFromPackageJson(context.dir)}-${sbomComponent}`,
+              rootComponentName: `${getProjectIdFromPackageJson(context.dir) as string}-${sbomComponent}`,
               includeWellknown: false,
             })
           );
@@ -145,14 +200,14 @@ export function getNextConfig(projectRoot: string): NextConfig {
   return config;
 }
 
-export function getCommonDefines(projectRoot: string, stringify: boolean = true) {
-  function maybeStringify(value: string) {
+export function getCommonDefines(projectRoot: string, stringify = true) {
+  function maybeStringify(value: string): string {
     return stringify ? JSON.stringify(value) : value;
   }
 
   const defines = {
     'globalThis.__DEV__': isProd ? 'false' : 'true',
-    'process.env.PROJECT_ID': maybeStringify(getProjectIdFromPackageJson(projectRoot)),
+    'process.env.PROJECT_ID': maybeStringify(getProjectIdFromPackageJson(projectRoot) as string),
     'process.env.NEXTJS_ASSET_PREFIX': maybeStringify(prodAssetPrefix || ''),
     ...getSentryWebpackDefines(stringify),
   };

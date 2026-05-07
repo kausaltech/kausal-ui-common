@@ -1,7 +1,8 @@
 /* istanbul ignore file */
-import { ApolloLink, type NextLink, type Operation } from '@apollo/client';
+import { ApolloLink, ServerError } from '@apollo/client';
 import { loadDevMessages, loadErrorMessages } from '@apollo/client/dev';
-import { type ErrorResponse, onError } from '@apollo/client/link/error';
+import { ErrorLink } from '@apollo/client/link/error';
+import { RetryLink } from '@apollo/client/link/retry';
 import * as otelApi from '@opentelemetry/api';
 import { ATTR_URL_FULL } from '@opentelemetry/semantic-conventions';
 import { SPAN_STATUS_ERROR, SPAN_STATUS_OK } from '@sentry/core';
@@ -9,6 +10,7 @@ import type { StartSpanOptions } from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
 import { Kind, type OperationDefinitionNode } from 'graphql';
 import type { Bindings } from 'pino';
+import { tap } from 'rxjs';
 
 import { isLocalDev, isProductionDeployment, isServer } from '@common/env';
 import { generateCorrelationID, getLogger } from '@common/logging';
@@ -22,11 +24,12 @@ if (globalThis.__DEV__) {
   loadErrorMessages();
 }
 
-const logErrorLink = onError((errorResponse: ErrorResponse) => {
-  logApolloError(errorResponse);
+const logErrorLink = new ErrorLink(({ error, operation, forward }) => {
+  logApolloError(error, { operation });
+  return forward(operation);
 });
 
-const logOperation = new ApolloLink((operation, forward: NextLink) => {
+const logOperation = new ApolloLink((operation, forward: ApolloLink.ForwardFunction) => {
   const { setContext, operationName, getContext } = operation;
   const queryId = generateCorrelationID();
   const ctx = getContext() as DefaultApolloContext;
@@ -45,37 +48,45 @@ const logOperation = new ApolloLink((operation, forward: NextLink) => {
 
   setContext({ ...ctx, start: Date.now(), logger: opLogger });
   opLogger.info(`Starting GraphQL request ${operationName}`);
-  return forward(operation).map((data) => {
-    const context = operation.getContext() as DefaultApolloContext;
-    const now = Date.now();
-    const start = context.start;
-    const durationMs = start ? Math.round(now - start) : null;
-    const logContext: Bindings = {
-      duration: durationMs,
-    };
-    const durationStr = durationMs != null ? `(took ${durationMs} ms)` : `<unknown duration>`;
-    if (isLocalDev) {
-      logContext.responseLength = JSON.stringify(data).length;
-    }
-    const nrErrors = data.errors?.length;
-    if (nrErrors) {
-      opLogger.error(
-        { errorCount: nrErrors, ...logContext },
-        `Operation finished with errors ${durationStr}`
-      );
-    } else {
-      opLogger.info(
-        logContext,
-        `GraphQL request ${operationName} finished successfully ${durationStr}`
-      );
-    }
-    return data;
-  });
+  return forward(operation).pipe(
+    tap((result) => {
+      const context = operation.getContext() as DefaultApolloContext;
+      const now = Date.now();
+      const start = context.start;
+      const durationMs = start ? Math.round(now - start) : null;
+      const logContext: Bindings = {
+        duration: durationMs,
+      };
+      const durationStr = durationMs != null ? `(took ${durationMs} ms)` : `<unknown duration>`;
+      if (isLocalDev && result.data) {
+        logContext.responseLength = JSON.stringify(result.data ?? {}).length;
+      }
+      const nrErrors = result.errors?.length;
+      if (nrErrors) {
+        opLogger.error({ ...logContext }, `Operation finished with errors ${durationStr}`);
+      } else {
+        opLogger.info(
+          logContext,
+          `GraphQL request ${operationName} finished successfully ${durationStr}`
+        );
+      }
+    })
+  );
 });
 
 export const logOperationLink = ApolloLink.from([logOperation, logErrorLink]);
 
-export function extractDefinition(operation: Operation): OperationDefinitionNode {
+export const retryLink = new RetryLink({
+  attempts: (attempt, _operation, error) => {
+    return attempt < 3 && ServerError.is(error) && error.statusCode >= 500;
+  },
+  delay: {
+    initial: 1000,
+    jitter: true,
+  },
+});
+
+export function extractDefinition(operation: ApolloLink.Operation): OperationDefinitionNode {
   // We know we always have a single definition, because Apollo validates this before we get here.
   // With more then one query defined, an error like this is thrown and the query is never sent:
   // "react-apollo only supports a query, subscription, or a mutation per HOC. [object Object] had 2 queries, 0 subscriptions and 0 mutations. You can use 'compose' to join multiple operation types to a component"
@@ -95,7 +106,7 @@ export const createSentryLink = (uri: string) => {
     }
     const spanOpts: StartSpanOptions = {
       op: `http.graphql.${opType}`,
-      name: operation.operationName,
+      name: operation.operationName ?? '<unknown>',
       onlyIfParent: true,
       attributes: {
         [ATTR_URL_FULL]: uri,
@@ -109,11 +120,11 @@ export const createSentryLink = (uri: string) => {
       data: {
         'operation.name': operation.operationName,
         'operation.type': opType,
-        'originator': context.componentName,
+        originator: context.componentName,
         uri,
         variables: operation.variables,
       },
-    })
+    });
     return Sentry.startSpanManual(spanOpts, (span, finish) => {
       if (isLocalDev) {
         span.setAttribute('graphql.document', operation.query.loc?.source.body ?? '<unknown>');
@@ -144,18 +155,19 @@ export const createSentryLink = (uri: string) => {
           spanId: span.spanContext().spanId,
         };
       });
-      return forward(operation).map((result) => {
-        if (result.errors) {
-          span.setStatus({
-            code: SPAN_STATUS_ERROR,
-            message: result.errors[0].message,
-          });
-        } else {
-          span.setStatus({ code: SPAN_STATUS_OK });
-        }
-        finish();
-        return result;
-      });
+      return forward(operation).pipe(
+        tap((result) => {
+          if (result.errors) {
+            span.setStatus({
+              code: SPAN_STATUS_ERROR,
+              message: result.errors[0].message,
+            });
+          } else {
+            span.setStatus({ code: SPAN_STATUS_OK });
+          }
+          finish();
+        })
+      );
     });
   });
   return link;

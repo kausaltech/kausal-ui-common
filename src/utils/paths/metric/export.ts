@@ -1,8 +1,8 @@
 import dayjs from 'dayjs';
 import type { Font, Style } from 'exceljs';
 
-import { createTable } from './table';
 import { flatten, sliceBy } from './slicing';
+import { createTable } from './table';
 import type { ExportOptions, MetricSliceData, ParsedMetric, SliceConfig, TableData } from './types';
 
 /**

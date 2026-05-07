@@ -9,6 +9,7 @@ import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+
 import Highlighter from 'react-highlight-words';
 
 import PopoverTip from '@common/components/PopoverTip';
@@ -82,6 +83,7 @@ export default function SelectDropdown(props: SelectDropdownProps) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsClient(true);
   }, []);
 
@@ -168,7 +170,7 @@ export default function SelectDropdown(props: SelectDropdownProps) {
         id={id}
         options={options}
         value={props.value}
-        disableClearable={!isClearable as boolean}
+        disableClearable={!isClearable}
         getOptionLabel={(option) => option.label}
         isOptionEqualToValue={(option, val) => option.id === val.id}
         renderOption={(liProps, option, state) =>

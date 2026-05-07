@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import styled from '@emotion/styled';
 import {
   IconButton,
   ListItemIcon,
@@ -9,9 +8,11 @@ import {
   Menu,
   MenuItem,
 } from '@mui/material';
+
 import { FiletypeCsv, FiletypeXls, ThreeDotsVertical } from 'react-bootstrap-icons';
 
 import type { TFunction } from '@common/i18n';
+import styled from '@common/themes/styled';
 import { type ParsedMetric, type SliceConfig, downloadData } from '@common/utils/paths/metric';
 
 const Tools = styled.div`

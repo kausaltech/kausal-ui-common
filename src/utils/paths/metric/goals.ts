@@ -59,7 +59,9 @@ export function getChoicesForGoal(
     if (gdim.groups) {
       const grpMap = new Map<string, MetricCategoryGroup>(
         metricDim.groups
-          .filter((grp): grp is MetricCategoryGroup & { originalId: string } => grp.originalId != null)
+          .filter(
+            (grp): grp is MetricCategoryGroup & { originalId: string } => grp.originalId != null
+          )
           .map((grp) => [grp.originalId, grp])
       );
       const groupMatches = gdim.groups

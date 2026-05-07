@@ -1,7 +1,7 @@
 /* istanbul ignore file */
-
 import { context, propagation } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
+import type { HttpInstrumentationConfig } from '@opentelemetry/instrumentation-http';
 import { serializeEnvelope } from '@sentry/core';
 import type {
   BaseTransportOptions,
@@ -14,7 +14,7 @@ import type {
 } from '@sentry/core';
 import * as Sentry from '@sentry/nextjs';
 import { type EdgeOptions, type NodeOptions } from '@sentry/nextjs';
-import type { httpIntegration, nativeNodeFetchIntegration } from '@sentry/node';
+import type { nativeNodeFetchIntegration } from '@sentry/node';
 import type { Logger } from 'pino';
 
 import {
@@ -36,6 +36,7 @@ import {
 import { envToBool } from '@common/env/utils';
 import { getLogger } from '@common/logging/logger';
 import { ensureTrailingSlash } from '@common/utils';
+
 import { initSentryCommon } from './common-init';
 
 const IGNORE_PATHS = [
@@ -70,11 +71,13 @@ const edgeSpotlightIntegration: IntegrationFn = (options: { url: string }) => {
     if (nrErrors > 5) {
       return;
     }
+
     fetch(options.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-sentry-envelope',
       },
+      // @ts-expect-error - serializedEnvelope is a string or Uint8Array
       body: serializedEnvelope,
     }).catch((reason: Error) => {
       nrErrors++;
@@ -136,7 +139,7 @@ function getCommonOptions() {
     environment,
     release: getSentryRelease(),
     enabled: enableSpotlight ? true : undefined,
-    maxValueLength: (!runtimeConfig.sentryDsn && enableSpotlight) ? 10000 : undefined,
+    maxValueLength: !runtimeConfig.sentryDsn && enableSpotlight ? 10000 : undefined,
     // If we're using Spotlight, and a DSN is not set, we need to create a fake transport so that tracing works.
     transport: runtimeConfig.sentryDsn || !enableSpotlight ? undefined : makeNullTransport,
     tracesSampler(ctx: SamplingContext) {
@@ -199,18 +202,12 @@ function getNodeFetchIntegrationOptions(): NodeFetchOptions {
 
 const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
 
-type HttpIntegrationOptions = Parameters<typeof httpIntegration>[0];
-type HttpInstrumentationOptions = NonNullable<
-  NonNullable<HttpIntegrationOptions>['instrumentation']
->['_experimentalConfig'];
-
-export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
+export function getHttpInstrumentationOptions(): HttpInstrumentationConfig {
   const logger = getLogger('http-instrumentation', { noSpan: true });
-  const options: HttpInstrumentationOptions = {
-    enabled: true,
+  const options: HttpInstrumentationConfig = {
     ignoreIncomingRequestHook(request) {
-      const urlPath = request.url?.split('?')[0] ?? '';
-      if (IGNORE_PATHS.some((path) => urlPath === path)) {
+      const urlPath = request.url;
+      if (!urlPath || IGNORE_PATHS.some((path) => urlPath === path)) {
         return true;
       }
       if (IGNORE_PREFIXES.some((prefix) => urlPath.startsWith(prefix))) {
@@ -224,8 +221,6 @@ export function getHttpInstrumentationOptions(): HttpInstrumentationOptions {
     ignoreOutgoingRequestHook(request) {
       const spotlightUrl = getSpotlightUrl();
       if (spotlightUrl) {
-        // Something weird is going on with the url argument, so we'll use
-        // the request object instead.
         const spUrl = new URL(spotlightUrl);
         if (
           request.hostname === spUrl.hostname &&
@@ -322,8 +317,9 @@ function getEdgeOptions() {
 export async function initSentry(): Promise<Client | undefined> {
   // Sentry requires a global.next object to be present, but it's not always there.
   if (!('next' in globalThis)) {
+    // @ts-expect-error - globalThis is not typed
     globalThis.next = {
-      version: '15.4.0',
+      version: '16.2.0',
     };
   }
   if (process.env.NEXT_RUNTIME === 'edge') {

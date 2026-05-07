@@ -5,15 +5,16 @@ import { customAlphabet } from 'nanoid';
 import type { Bindings, Level, Logger } from 'pino';
 import { pino } from 'pino';
 
-import { getKubernetesLogging } from '@common/env/runtime';
-
 import { REQUEST_CORRELATION_ID_HEADER } from '../constants/headers.mjs';
+import { getKubernetesLogging } from '../env/runtime.ts';
 
 export function getRootLogger() {
+  // @ts-expect-error - globalThis is not typed
   return globalThis['__kausal_root_logger__'] as Logger | undefined;
 }
 
 export function setRootLogger(logger: Logger) {
+  // @ts-expect-error - globalThis is not typed
   globalThis['__kausal_root_logger__'] = logger;
 }
 
@@ -118,7 +119,8 @@ export function getLogger(
           correlationId = val;
         }
       } else {
-        const val = headers[correlationIdHeader] as string | string[] | undefined;
+        const incomingHeaders = headers as IncomingHttpHeaders;
+        const val = incomingHeaders[correlationIdHeader];
         if (typeof val === 'string') {
           correlationId = val;
         } else if (Array.isArray(val)) {
@@ -142,6 +144,7 @@ export function getLogger(
     }
     const logger = parent.child(allBindings);
     if (opts.noSpan) {
+      // @ts-expect-error - logger['noSpan'] is not typed
       logger['noSpan'] = true;
     }
     return logger;

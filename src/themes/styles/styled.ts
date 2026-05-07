@@ -1,4 +1,4 @@
-import type { CreateStyledComponent, StyledOptions } from '@emotion/styled';
+import type { StyledOptions } from '@emotion/styled';
 
 /**
  * Options for styled() calls wrapping custom React components.
@@ -14,5 +14,3 @@ import type { CreateStyledComponent, StyledOptions } from '@emotion/styled';
 export const transientOptions: StyledOptions = {
   shouldForwardProp: (prop: string) => !prop.startsWith('$'),
 };
-
-export type { CreateStyledComponent };

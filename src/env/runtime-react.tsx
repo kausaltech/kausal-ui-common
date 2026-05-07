@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useRef } from 'react';
-
 import { useServerInsertedHTML } from 'next/navigation';
 
 import { WINDOW_PUBLIC_ENV_KEY, getPublicEnv } from './runtime';

@@ -1,2 +1,2 @@
 /* istanbul ignore file */
-export { generateCorrelationID, getLogger, isPrettyLogger } from './logger';
+export { generateCorrelationID, getLogger, isPrettyLogger } from './logger.ts';
