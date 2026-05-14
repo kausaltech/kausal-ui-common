@@ -185,6 +185,17 @@ export function Chart({
     }
   }, [isLoading]);
 
+  // ECharts caches the canvas size at init time and otherwise only reacts to
+  // window-resize events, so changing the `height` prop must explicitly notify it.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.resize();
+    if (withResizeLegend) {
+      resizeLegend(chart);
+    }
+  }, [height, withResizeLegend]);
+
   // Update the chart when the data changes
   useEffect(() => {
     if (chartRef.current && data) {
