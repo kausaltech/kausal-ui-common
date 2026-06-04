@@ -2,8 +2,8 @@
 
 import React, { useMemo } from 'react';
 
-import { Global, css } from '@emotion/react';
 import type { Theme } from '@emotion/react';
+import { Global, css } from '@emotion/react';
 
 import { useTheme } from '@common/themes';
 
@@ -119,7 +119,7 @@ const getGlobalStyles = (theme: Theme) => css`
   }
 
   .text-content {
-    font-family: ${theme.fontFamilyContent};
+    font-family: ${theme.fontFamilyContent}, ${theme.fontFamilyFallback};
 
     a {
       text-decoration: underline;
