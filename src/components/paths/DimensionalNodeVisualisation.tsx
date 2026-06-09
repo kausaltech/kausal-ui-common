@@ -221,12 +221,14 @@ export default function DimensionalNodeVisualisation({
   const allFilteredYears = filteredYears;
 
   if (separateYears && separateYears.length > 0) {
-    const indices = filteredYears.reduce<number[]>((acc, year, i) => {
-      if (separateYears.includes(year)) acc.push(i);
-      return acc;
-    }, []);
-    filteredYears = indices.map((i) => filteredYears[i]);
-    yearIndices = indices.map((i) => yearIndices[i]);
+    // separateYears bypasses the visible range and minimumHistoricalYear clipping:
+    // we display exactly the requested years, including any (such as the reference
+    // year) that fall outside the normal historical/forecast range. Selecting from
+    // the full set of slice years rather than the already-clipped filteredYears
+    // ensures those out-of-range years are not dropped.
+    const allYears = [...slice.historicalYears, ...slice.forecastYears];
+    filteredYears = allYears.filter((year) => separateYears.includes(year));
+    yearIndices = filteredYears.map((year) => allYears.indexOf(year));
   }
 
   const filteredProgressValues: number[] = [];
