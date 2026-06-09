@@ -126,8 +126,10 @@ export default function NodeGraph(props: NodeGraphProps) {
     // By definition reference year has no progress data
     if (dataPoint[0] === 0 && referenceYear) return;
 
-    // If some other year is clicked, we need to offset the index if referenceYear is present
-    const offsetForReferenceYear = referenceYear ? 1 : 0;
+    // If some other year is clicked, we need to offset the index if referenceYear is present.
+    // Bar charts insert an empty spacer category after the reference year, so the historical
+    // years are shifted one extra step to the right.
+    const offsetForReferenceYear = referenceYear ? (showReferenceGap ? 2 : 1) : 0;
     const clickedYear = Number(startYear) + dataPoint[0] - offsetForReferenceYear;
 
     if (progressTable) {
@@ -140,6 +142,56 @@ export default function NodeGraph(props: NodeGraphProps) {
     }
   };
 
+  // The reference year must not be joined to the historical time series as if the
+  // two were adjacent.
+  //   - Area charts render the reference year as a standalone bar and drop it from
+  //     the area, leaving a one-category gap before the first historical year.
+  //   - Bar charts keep the reference year as a bar but insert an empty "spacer"
+  //     category after it, creating a clear gap before the first historical year.
+  const hasReferenceYearColumn = !!referenceYear && Number(dataTable[0]?.[1]) === referenceYear;
+  const separateReferenceYear = resolvedChartType === 'area' && hasReferenceYearColumn;
+  const showReferenceGap = resolvedChartType === 'bar' && hasReferenceYearColumn;
+
+  const REFERENCE_COL = 1; // reference year column (right after the 'Category' label)
+  const SPACER_COL = 2; // an empty category inserted right after the reference year
+
+  // Insert an empty spacer category after the reference year column.
+  const withSpacer = (table: DataTable): DataTable =>
+    table.map((row, rowIndex) => {
+      const next = [...row];
+      next.splice(SPACER_COL, 0, rowIndex === 0 ? '' : null);
+      return next;
+    });
+
+  // Area dataset: drop the reference year value so the area starts at the first
+  // historical year, one category to the right of the reference bar.
+  const toAreaTable = (table: DataTable): DataTable =>
+    table.map((row, rowIndex) =>
+      rowIndex === 0 ? row : row.map((cell, col) => (col === REFERENCE_COL ? null : cell))
+    );
+
+  // Reference-year bar dataset: keep only the reference year value per category.
+  const toReferenceBarTable = (table: DataTable): DataTable =>
+    table.map((row, rowIndex) =>
+      rowIndex === 0
+        ? row
+        : row.map((cell, col) => (col === 0 || col === REFERENCE_COL ? cell : null))
+    );
+
+  const mainTable = separateReferenceYear
+    ? toAreaTable(dataTable)
+    : showReferenceGap
+      ? withSpacer(dataTable)
+      : dataTable;
+  const referenceBarTable = separateReferenceYear ? toReferenceBarTable(dataTable) : null;
+  // Keep the secondary datasets aligned with the spacer inserted into the main table.
+  const goalTableResolved = showReferenceGap && goalTable ? withSpacer(goalTable) : goalTable;
+  const baselineTableResolved =
+    showReferenceGap && baselineTable ? withSpacer(baselineTable) : baselineTable;
+  const progressTableResolved =
+    showReferenceGap && progressTable ? withSpacer(progressTable) : progressTable;
+  const totalTableResolved = showReferenceGap && totalTable ? withSpacer(totalTable) : totalTable;
+
   const fullDataset: {
     source: DataTable | undefined;
     sourceHeader: boolean;
@@ -148,6 +200,7 @@ export default function NodeGraph(props: NodeGraphProps) {
   // Track actual dataset indices as we build the array
   const datasetIndices = {
     data: -1,
+    referenceBar: -1,
     goal: -1,
     baseline: -1,
     progress: -1,
@@ -155,46 +208,55 @@ export default function NodeGraph(props: NodeGraphProps) {
   };
 
   // Add main data dataset (always present)
-  if (dataTable && dataTable.length > 0) {
+  if (mainTable && mainTable.length > 0) {
     datasetIndices.data = fullDataset.length;
     fullDataset.push({
-      source: dataTable,
+      source: mainTable,
+      sourceHeader: true,
+    });
+  }
+
+  // Add reference-year bar dataset if present (area charts only)
+  if (referenceBarTable && referenceBarTable.length > 0) {
+    datasetIndices.referenceBar = fullDataset.length;
+    fullDataset.push({
+      source: referenceBarTable,
       sourceHeader: true,
     });
   }
 
   // Add goal dataset if present
-  if (goalTable && goalTable.length > 0) {
+  if (goalTableResolved && goalTableResolved.length > 0) {
     datasetIndices.goal = fullDataset.length;
     fullDataset.push({
-      source: goalTable,
+      source: goalTableResolved,
       sourceHeader: true,
     });
   }
 
   // Add baseline dataset if present
-  if (baselineTable && baselineTable.length > 0) {
+  if (baselineTableResolved && baselineTableResolved.length > 0) {
     datasetIndices.baseline = fullDataset.length;
     fullDataset.push({
-      source: baselineTable,
+      source: baselineTableResolved,
       sourceHeader: true,
     });
   }
 
   // Add progress dataset if present
-  if (progressTable && progressTable.length > 0) {
+  if (progressTableResolved && progressTableResolved.length > 0) {
     datasetIndices.progress = fullDataset.length;
     fullDataset.push({
-      source: progressTable,
+      source: progressTableResolved,
       sourceHeader: true,
     });
   }
 
   // Add total dataset if present
-  if (totalTable && totalTable.length > 0) {
+  if (totalTableResolved && totalTableResolved.length > 0) {
     datasetIndices.total = fullDataset.length;
     fullDataset.push({
-      source: totalTable,
+      source: totalTableResolved,
       sourceHeader: true,
     });
   }
@@ -272,6 +334,9 @@ export default function NodeGraph(props: NodeGraphProps) {
       forecastTitle ?? t('table-scenario-forecast'),
       forecastAreaStartIndex
     ) || []),
+    ...(separateReferenceYear && datasetIndices.referenceBar >= 0
+      ? createReferenceBarSeries(fullDataset, datasetIndices.referenceBar, categoryColors, theme)
+      : []),
     hasGoalData && datasetIndices.goal >= 0
       ? createGoalSeries(
           theme,
@@ -616,6 +681,40 @@ function createMainSeries(
       ...createSeries(row, idx),
       ...createForecastBackground(idx),
     }));
+}
+
+/**
+ * Render the reference year as standalone stacked bars at the start of an area
+ * chart. The reference year is historical (a comparison baseline), so the bars
+ * use the plain category colors with no forecast tint. An empty spacer category
+ * sits between these bars and the area, giving a clear visual gap.
+ */
+function createReferenceBarSeries(
+  dataset: {
+    source: DataTable | undefined;
+    sourceHeader: boolean;
+  }[],
+  referenceBarIndex: number,
+  categoryColors: string[],
+  theme: Theme
+) {
+  const source = dataset[referenceBarIndex]?.source;
+  if (!source || source.length <= 1) return [];
+
+  return source.slice(1).map((row, idx) => ({
+    type: 'bar',
+    seriesLayoutBy: 'row',
+    stack: 'reference',
+    stackStrategy: 'samesign',
+    // Share the category name so the legend toggles bar + area together.
+    name: row[0],
+    datasetIndex: referenceBarIndex,
+    itemStyle: {
+      color: categoryColors[idx] ?? theme.graphColors.blue070,
+    },
+    barWidth: BAR_WIDTH,
+    barMaxWidth: BAR_MAX_WIDTH,
+  }));
 }
 
 function createGoalSeries(
