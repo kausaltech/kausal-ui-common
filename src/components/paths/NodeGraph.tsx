@@ -1,3 +1,5 @@
+import { type Ref } from 'react';
+
 import type { Theme } from '@kausal/themes/types';
 import * as Sentry from '@sentry/nextjs';
 import type * as echarts from 'echarts/core';
@@ -9,10 +11,23 @@ import type {
 import { useLocale, useTranslations } from 'next-intl';
 import { tint } from 'polished';
 
-import { Chart } from '@common/components/Chart';
+import { Chart, type ChartHandle } from '@common/components/Chart';
 import { sanitizeHtmlUnit } from '@common/utils/format';
 
-type TFunction = ReturnType<typeof useTranslations>;
+/**
+ * Labels used in the legend and tooltip. Optional so existing callers keep
+ * relying on the component's internal `useTranslations()`; callers whose
+ * messages are namespaced (so bare keys don't resolve) inject them instead.
+ */
+export type NodeGraphLabels = {
+  total: string;
+  goal: string;
+  baseline: string;
+  progress: string;
+  measured: string;
+  comparisonYear: string;
+  forecast: string;
+};
 
 /**
  * Receives filtered node data as tables and plots them in a chart.
@@ -58,6 +73,12 @@ type NodeGraphProps = {
   chartType?: ChartType;
   predictionLabel?: string;
   theme: Theme;
+  /** Forwarded to the chart so callers can export it (e.g. PNG via getDataURL). */
+  chartRef?: Ref<ChartHandle>;
+  /** Y-axis label formatter; falls back to `formatValue` when omitted. */
+  formatAxisValue?: (value: number) => string;
+  /** Pre-translated labels; falls back to internal `useTranslations()` when omitted. */
+  labels?: NodeGraphLabels;
 };
 
 type DataTable = (string | number | null | undefined)[][];
@@ -93,9 +114,26 @@ export default function NodeGraph(props: NodeGraphProps) {
     chartType,
     theme,
     predictionLabel,
+    chartRef,
+    formatAxisValue,
+    labels,
   } = props;
 
   const locale = useLocale();
+
+  // Fallback keys are bare (valid where messages are flat). Consumers with
+  // namespaced messages pass `labels` instead, so this branch is dead for them;
+  // the loose cast lets the component typecheck under either message config.
+  const tt = t as unknown as (key: string) => string;
+  const resolvedLabels: NodeGraphLabels = labels ?? {
+    total: tt('plot-total'),
+    goal: tt('target'),
+    baseline: tt('plot-baseline'),
+    progress: tt('calculated-emissions'),
+    measured: tt('plot-measured'),
+    comparisonYear: tt('comparison-year'),
+    forecast: tt('table-scenario-forecast'),
+  };
   const resolvedChartType: ChartType = chartType ?? (stackable ? 'bar' : 'line');
   const resolvedShowTotalLine = resolvedChartType === 'area' ? false : showTotalLine;
 
@@ -262,10 +300,10 @@ export default function NodeGraph(props: NodeGraphProps) {
   }
 
   const specialSeriesLabels = {
-    Total: t('plot-total'),
-    Goal: t('target'),
-    Baseline: baselineLabel || t('plot-baseline'),
-    Progress: t('calculated-emissions'),
+    Total: resolvedLabels.total,
+    Goal: resolvedLabels.goal,
+    Baseline: baselineLabel || resolvedLabels.baseline,
+    Progress: resolvedLabels.progress,
   };
 
   const hasGoalData = goalTable !== null;
@@ -316,7 +354,8 @@ export default function NodeGraph(props: NodeGraphProps) {
         unit.htmlShort,
         formatValue,
         specialSeriesLabels,
-        t,
+        resolvedLabels.measured,
+        resolvedLabels.comparisonYear,
         resolvedShowTotalLine,
         predictionLabel
       );
@@ -331,7 +370,7 @@ export default function NodeGraph(props: NodeGraphProps) {
       theme,
       isForecastYear,
       resolvedChartType,
-      forecastTitle ?? t('table-scenario-forecast'),
+      forecastTitle ?? resolvedLabels.forecast,
       forecastAreaStartIndex
     ) || []),
     ...(separateReferenceYear && datasetIndices.referenceBar >= 0
@@ -425,7 +464,7 @@ export default function NodeGraph(props: NodeGraphProps) {
       },
       nameGap: 30,
       axisLabel: {
-        formatter: (value: number) => (formatValue ? formatValue(value) : value),
+        formatter: (value: number) => (formatAxisValue ?? formatValue)(value),
       },
     },
     barGap: 0,
@@ -442,6 +481,7 @@ export default function NodeGraph(props: NodeGraphProps) {
       className="plot-container"
       onZrClick={handleChartClick}
       locale={locale}
+      ref={chartRef}
     />
   );
 }
@@ -822,7 +862,8 @@ function buildTooltipContent(
   unit: string,
   formatValue: (value: number) => string,
   specialSeriesLabels: Record<string, string>,
-  t: TFunction,
+  measuredLabel: string,
+  comparisonYearLabel: string,
   showTotalLine: boolean,
   predictionLabel?: string
 ) {
@@ -830,8 +871,8 @@ function buildTooltipContent(
   const yearLabel = isForecast
     ? predictionLabel
     : isReferenceYear
-      ? t('comparison-year')
-      : t('plot-measured');
+      ? comparisonYearLabel
+      : measuredLabel;
 
   let tooltip = `<div style="font-weight: bold; margin-bottom: 5px;">
     ${year} (${yearLabel})
