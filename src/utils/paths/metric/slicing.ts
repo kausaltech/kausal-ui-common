@@ -131,7 +131,15 @@ export function sliceBy(
         (totalValues.forecastValues as (number | null)[])[idx] = oldVal + val;
       });
 
-      const isNegative = cat.order !== null && cat.order !== undefined ? cat.order < 0 : false;
+      // Categories that represent net sinks (e.g. negative emissions) belong at
+      // the bottom of a stacked chart. When the backend provides an explicit
+      // order, a negative order marks such a category; otherwise we infer it
+      // from the data — a category that ever goes below zero is treated as
+      // negative so it doesn't float to the top in years where its value is 0.
+      const isNegative =
+        cat.order !== null && cat.order !== undefined
+          ? cat.order < 0
+          : [...historicalValues, ...forecastValues].some((val) => (val ?? 0) < 0);
 
       return {
         category: cat,
@@ -164,7 +172,13 @@ export function sliceBy(
       idx = forecastYears.length - 1;
       key = 'forecastValues';
     }
-    unordered.sort((a, b) => (b[key][idx] ?? 0) - (a[key][idx] ?? 0));
+    unordered.sort((a, b) => {
+      // Keep net-negative categories (e.g. carbon sinks) at the bottom of the
+      // stack (first in series order) so they don't float to the top in years
+      // where their value is 0 and then snap down once they go negative.
+      if (a.isNegative !== b.isNegative) return a.isNegative ? -1 : 1;
+      return (b[key][idx] ?? 0) - (a[key][idx] ?? 0);
+    });
   }
 
   return {
@@ -278,7 +292,7 @@ export function getSingleYear(
   // Get all used dimensions and their categories/groups
   const categoryTypes = metric.dimensions.map((dim) => ({
     id: dim.id,
-    type: dim.groups.length ? 'group' : 'category',
+    type: (dim.groups.length ? 'group' : 'category') as 'group' | 'category',
     options: dim.groups.length
       ? [...new Set(yearRows.map((row) => row.dimCats[dim.id].group!))]
       : [...new Set(yearRows.map((row) => row.dimCats[dim.id].id))],

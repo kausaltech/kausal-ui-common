@@ -1,3 +1,5 @@
+import { type Ref } from 'react';
+
 import type { Theme } from '@kausal/themes/types';
 import * as Sentry from '@sentry/nextjs';
 import type * as echarts from 'echarts/core';
@@ -9,10 +11,23 @@ import type {
 import { useLocale, useTranslations } from 'next-intl';
 import { tint } from 'polished';
 
-import { Chart } from '@common/components/Chart';
+import { Chart, type ChartHandle } from '@common/components/Chart';
 import { sanitizeHtmlUnit } from '@common/utils/format';
 
-type TFunction = ReturnType<typeof useTranslations>;
+/**
+ * Labels used in the legend and tooltip. Optional so existing callers keep
+ * relying on the component's internal `useTranslations()`; callers whose
+ * messages are namespaced (so bare keys don't resolve) inject them instead.
+ */
+export type NodeGraphLabels = {
+  total: string;
+  goal: string;
+  baseline: string;
+  progress: string;
+  measured: string;
+  comparisonYear: string;
+  forecast: string;
+};
 
 /**
  * Receives filtered node data as tables and plots them in a chart.
@@ -58,6 +73,12 @@ type NodeGraphProps = {
   chartType?: ChartType;
   predictionLabel?: string;
   theme: Theme;
+  /** Forwarded to the chart so callers can export it (e.g. PNG via getDataURL). */
+  chartRef?: Ref<ChartHandle>;
+  /** Y-axis label formatter; falls back to `formatValue` when omitted. */
+  formatAxisValue?: (value: number) => string;
+  /** Pre-translated labels; falls back to internal `useTranslations()` when omitted. */
+  labels?: NodeGraphLabels;
 };
 
 type DataTable = (string | number | null | undefined)[][];
@@ -93,9 +114,26 @@ export default function NodeGraph(props: NodeGraphProps) {
     chartType,
     theme,
     predictionLabel,
+    chartRef,
+    formatAxisValue,
+    labels,
   } = props;
 
   const locale = useLocale();
+
+  // Fallback keys are bare (valid where messages are flat). Consumers with
+  // namespaced messages pass `labels` instead, so this branch is dead for them;
+  // the loose cast lets the component typecheck under either message config.
+  const tt = t as unknown as (key: string) => string;
+  const resolvedLabels: NodeGraphLabels = labels ?? {
+    total: tt('plot-total'),
+    goal: tt('target'),
+    baseline: tt('plot-baseline'),
+    progress: tt('calculated-emissions'),
+    measured: tt('plot-measured'),
+    comparisonYear: tt('comparison-year'),
+    forecast: tt('table-scenario-forecast'),
+  };
   const resolvedChartType: ChartType = chartType ?? (stackable ? 'bar' : 'line');
   const resolvedShowTotalLine = resolvedChartType === 'area' ? false : showTotalLine;
 
@@ -126,8 +164,10 @@ export default function NodeGraph(props: NodeGraphProps) {
     // By definition reference year has no progress data
     if (dataPoint[0] === 0 && referenceYear) return;
 
-    // If some other year is clicked, we need to offset the index if referenceYear is present
-    const offsetForReferenceYear = referenceYear ? 1 : 0;
+    // If some other year is clicked, we need to offset the index if referenceYear is present.
+    // Bar charts insert an empty spacer category after the reference year, so the historical
+    // years are shifted one extra step to the right.
+    const offsetForReferenceYear = referenceYear ? (showReferenceGap ? 2 : 1) : 0;
     const clickedYear = Number(startYear) + dataPoint[0] - offsetForReferenceYear;
 
     if (progressTable) {
@@ -140,6 +180,56 @@ export default function NodeGraph(props: NodeGraphProps) {
     }
   };
 
+  // The reference year must not be joined to the historical time series as if the
+  // two were adjacent.
+  //   - Area charts render the reference year as a standalone bar and drop it from
+  //     the area, leaving a one-category gap before the first historical year.
+  //   - Bar charts keep the reference year as a bar but insert an empty "spacer"
+  //     category after it, creating a clear gap before the first historical year.
+  const hasReferenceYearColumn = !!referenceYear && Number(dataTable[0]?.[1]) === referenceYear;
+  const separateReferenceYear = resolvedChartType === 'area' && hasReferenceYearColumn;
+  const showReferenceGap = resolvedChartType === 'bar' && hasReferenceYearColumn;
+
+  const REFERENCE_COL = 1; // reference year column (right after the 'Category' label)
+  const SPACER_COL = 2; // an empty category inserted right after the reference year
+
+  // Insert an empty spacer category after the reference year column.
+  const withSpacer = (table: DataTable): DataTable =>
+    table.map((row, rowIndex) => {
+      const next = [...row];
+      next.splice(SPACER_COL, 0, rowIndex === 0 ? '' : null);
+      return next;
+    });
+
+  // Area dataset: drop the reference year value so the area starts at the first
+  // historical year, one category to the right of the reference bar.
+  const toAreaTable = (table: DataTable): DataTable =>
+    table.map((row, rowIndex) =>
+      rowIndex === 0 ? row : row.map((cell, col) => (col === REFERENCE_COL ? null : cell))
+    );
+
+  // Reference-year bar dataset: keep only the reference year value per category.
+  const toReferenceBarTable = (table: DataTable): DataTable =>
+    table.map((row, rowIndex) =>
+      rowIndex === 0
+        ? row
+        : row.map((cell, col) => (col === 0 || col === REFERENCE_COL ? cell : null))
+    );
+
+  const mainTable = separateReferenceYear
+    ? toAreaTable(dataTable)
+    : showReferenceGap
+      ? withSpacer(dataTable)
+      : dataTable;
+  const referenceBarTable = separateReferenceYear ? toReferenceBarTable(dataTable) : null;
+  // Keep the secondary datasets aligned with the spacer inserted into the main table.
+  const goalTableResolved = showReferenceGap && goalTable ? withSpacer(goalTable) : goalTable;
+  const baselineTableResolved =
+    showReferenceGap && baselineTable ? withSpacer(baselineTable) : baselineTable;
+  const progressTableResolved =
+    showReferenceGap && progressTable ? withSpacer(progressTable) : progressTable;
+  const totalTableResolved = showReferenceGap && totalTable ? withSpacer(totalTable) : totalTable;
+
   const fullDataset: {
     source: DataTable | undefined;
     sourceHeader: boolean;
@@ -148,6 +238,7 @@ export default function NodeGraph(props: NodeGraphProps) {
   // Track actual dataset indices as we build the array
   const datasetIndices = {
     data: -1,
+    referenceBar: -1,
     goal: -1,
     baseline: -1,
     progress: -1,
@@ -155,55 +246,64 @@ export default function NodeGraph(props: NodeGraphProps) {
   };
 
   // Add main data dataset (always present)
-  if (dataTable && dataTable.length > 0) {
+  if (mainTable && mainTable.length > 0) {
     datasetIndices.data = fullDataset.length;
     fullDataset.push({
-      source: dataTable,
+      source: mainTable,
+      sourceHeader: true,
+    });
+  }
+
+  // Add reference-year bar dataset if present (area charts only)
+  if (referenceBarTable && referenceBarTable.length > 0) {
+    datasetIndices.referenceBar = fullDataset.length;
+    fullDataset.push({
+      source: referenceBarTable,
       sourceHeader: true,
     });
   }
 
   // Add goal dataset if present
-  if (goalTable && goalTable.length > 0) {
+  if (goalTableResolved && goalTableResolved.length > 0) {
     datasetIndices.goal = fullDataset.length;
     fullDataset.push({
-      source: goalTable,
+      source: goalTableResolved,
       sourceHeader: true,
     });
   }
 
   // Add baseline dataset if present
-  if (baselineTable && baselineTable.length > 0) {
+  if (baselineTableResolved && baselineTableResolved.length > 0) {
     datasetIndices.baseline = fullDataset.length;
     fullDataset.push({
-      source: baselineTable,
+      source: baselineTableResolved,
       sourceHeader: true,
     });
   }
 
   // Add progress dataset if present
-  if (progressTable && progressTable.length > 0) {
+  if (progressTableResolved && progressTableResolved.length > 0) {
     datasetIndices.progress = fullDataset.length;
     fullDataset.push({
-      source: progressTable,
+      source: progressTableResolved,
       sourceHeader: true,
     });
   }
 
   // Add total dataset if present
-  if (totalTable && totalTable.length > 0) {
+  if (totalTableResolved && totalTableResolved.length > 0) {
     datasetIndices.total = fullDataset.length;
     fullDataset.push({
-      source: totalTable,
+      source: totalTableResolved,
       sourceHeader: true,
     });
   }
 
   const specialSeriesLabels = {
-    Total: t('plot-total'),
-    Goal: t('target'),
-    Baseline: baselineLabel || t('plot-baseline'),
-    Progress: t('calculated-emissions'),
+    Total: resolvedLabels.total,
+    Goal: resolvedLabels.goal,
+    Baseline: baselineLabel || resolvedLabels.baseline,
+    Progress: resolvedLabels.progress,
   };
 
   const hasGoalData = goalTable !== null;
@@ -254,7 +354,8 @@ export default function NodeGraph(props: NodeGraphProps) {
         unit.htmlShort,
         formatValue,
         specialSeriesLabels,
-        t,
+        resolvedLabels.measured,
+        resolvedLabels.comparisonYear,
         resolvedShowTotalLine,
         predictionLabel
       );
@@ -269,9 +370,12 @@ export default function NodeGraph(props: NodeGraphProps) {
       theme,
       isForecastYear,
       resolvedChartType,
-      forecastTitle ?? t('table-scenario-forecast'),
+      forecastTitle ?? resolvedLabels.forecast,
       forecastAreaStartIndex
     ) || []),
+    ...(separateReferenceYear && datasetIndices.referenceBar >= 0
+      ? createReferenceBarSeries(fullDataset, datasetIndices.referenceBar, categoryColors, theme)
+      : []),
     hasGoalData && datasetIndices.goal >= 0
       ? createGoalSeries(
           theme,
@@ -360,7 +464,7 @@ export default function NodeGraph(props: NodeGraphProps) {
       },
       nameGap: 30,
       axisLabel: {
-        formatter: (value: number) => (formatValue ? formatValue(value) : value),
+        formatter: (value: number) => (formatAxisValue ?? formatValue)(value),
       },
     },
     barGap: 0,
@@ -377,6 +481,7 @@ export default function NodeGraph(props: NodeGraphProps) {
       className="plot-container"
       onZrClick={handleChartClick}
       locale={locale}
+      ref={chartRef}
     />
   );
 }
@@ -618,6 +723,40 @@ function createMainSeries(
     }));
 }
 
+/**
+ * Render the reference year as standalone stacked bars at the start of an area
+ * chart. The reference year is historical (a comparison baseline), so the bars
+ * use the plain category colors with no forecast tint. An empty spacer category
+ * sits between these bars and the area, giving a clear visual gap.
+ */
+function createReferenceBarSeries(
+  dataset: {
+    source: DataTable | undefined;
+    sourceHeader: boolean;
+  }[],
+  referenceBarIndex: number,
+  categoryColors: string[],
+  theme: Theme
+) {
+  const source = dataset[referenceBarIndex]?.source;
+  if (!source || source.length <= 1) return [];
+
+  return source.slice(1).map((row, idx) => ({
+    type: 'bar',
+    seriesLayoutBy: 'row',
+    stack: 'reference',
+    stackStrategy: 'samesign',
+    // Share the category name so the legend toggles bar + area together.
+    name: row[0],
+    datasetIndex: referenceBarIndex,
+    itemStyle: {
+      color: categoryColors[idx] ?? theme.graphColors.blue070,
+    },
+    barWidth: BAR_WIDTH,
+    barMaxWidth: BAR_MAX_WIDTH,
+  }));
+}
+
 function createGoalSeries(
   theme: Theme,
   datasetIndex: number,
@@ -723,7 +862,8 @@ function buildTooltipContent(
   unit: string,
   formatValue: (value: number) => string,
   specialSeriesLabels: Record<string, string>,
-  t: TFunction,
+  measuredLabel: string,
+  comparisonYearLabel: string,
   showTotalLine: boolean,
   predictionLabel?: string
 ) {
@@ -731,8 +871,8 @@ function buildTooltipContent(
   const yearLabel = isForecast
     ? predictionLabel
     : isReferenceYear
-      ? t('comparison-year')
-      : t('plot-measured');
+      ? comparisonYearLabel
+      : measuredLabel;
 
   let tooltip = `<div style="font-weight: bold; margin-bottom: 5px;">
     ${year} (${yearLabel})
