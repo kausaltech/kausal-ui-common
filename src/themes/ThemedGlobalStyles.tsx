@@ -8,6 +8,21 @@ import { Global, css } from '@emotion/react';
 import { useTheme } from '@common/themes';
 
 const getGlobalStyles = (theme: Theme) => css`
+  :root {
+    --block-gap: ${theme.spaces.s400};
+    --block-gap-coloured: 0px;
+    --block-padding-top: ${theme.spaces.s400};
+    --block-padding-bottom: ${theme.spaces.s400};
+    --block-header-margin-bottom: ${theme.spaces.s300};
+  }
+
+  @media (min-width: ${theme.breakpointMd}) {
+    :root {
+      --block-padding-top: calc(${theme.spaces.s600});
+      --block-padding-bottom: calc(${theme.spaces.s600});
+    }
+  }
+
   html {
     scroll-behavior: auto !important;
   }
