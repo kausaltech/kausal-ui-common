@@ -30,7 +30,7 @@ export function initializeThemes(rootDir) {
   const staticPath = join(rootDir, 'public', 'static');
   mkdirSync(staticPath, { recursive: true });
   const releaseThemeLock = lockfile.lockSync('public/static');
-  const require = createRequire(rootDir);
+  const require = createRequire(join(rootDir, 'package.json'));
   try {
     const destPath = join(rootDir, 'public', 'static', 'themes');
     const themesPrivate = tryImportThemePackage([
