@@ -49,9 +49,11 @@ log {
 encode zstd gzip
 
 route /_caddymetrics {
-	@denied not client_ip private_ranges
-	respond @denied 403 "Forbidden"
-	metrics
+	@allowed client_ip private_ranges
+	handle @allowed {
+		metrics
+	}
+	respond "Forbidden" 403
 }
 
 route /_caddyhealth {
