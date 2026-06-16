@@ -48,9 +48,9 @@ log {
 
 encode zstd gzip
 
-route /metrics {
+route /_caddymetrics {
 	@denied not client_ip private_ranges
-	abort @denied
+	respond @denied 403 "Forbidden"
 	metrics
 }
 
