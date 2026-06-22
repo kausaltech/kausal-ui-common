@@ -126,7 +126,7 @@ export default async function proxyGraphQLRequest(
   const operationName = incomingRequest.operationName || '<unknown>';
   const logger = getLogger({
     name: 'graphql-proxy',
-    request: req as NextRequest,
+    request: req,
     bindings: {
       'graphql.operation.name': operationName,
     },

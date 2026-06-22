@@ -8,9 +8,8 @@ export function coerceToBool(value: unknown): boolean | null {
     return null;
   }
 
-  const strValue = String(value as unknown)
-    .toLowerCase()
-    .trim();
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
+  const strValue = String(value).toLowerCase().trim();
   if (!strValue.length) return null;
   if (FALSY_ENV_VALUES.has(strValue)) {
     return false;

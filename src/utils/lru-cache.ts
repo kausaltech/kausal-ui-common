@@ -99,7 +99,7 @@ export default class LRUCache<K, V> implements NodeChain {
     // Set config
     if (options) {
       // max entries
-      this._max = options.max == null ? Infinity : options.max;
+      this._max = options.max ?? Infinity;
       // max bytes
       this._maxBytes = options.maxBytes ?? Infinity;
       // TTL
@@ -166,7 +166,6 @@ export default class LRUCache<K, V> implements NodeChain {
     // reload cleaner
     if (this._ttlP) {
       clearInterval(this._ttlP);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const interv = setInterval(this._ttlClean.bind(this), this._ttlInterval);
       this._ttlP = interv;
       interv.unref?.();
@@ -207,7 +206,7 @@ export default class LRUCache<K, V> implements NodeChain {
   /** Set value */
   set(key: K, value: V | Promise<V>, bytes: number = 0, ttl: number | undefined = undefined): this {
     let item: Node<K, V> | undefined;
-    if (ttl === undefined) ttl = this._ttl;
+    ttl ??= this._ttl;
     if ((item = this._map.get(key))) {
       if (item.value === value && item.bytes === bytes && item.ttl === ttl) {
         item.lastAccess = Date.now();
@@ -258,8 +257,7 @@ export default class LRUCache<K, V> implements NodeChain {
         this._delete(this._prev as Node<K, V>);
       }
       // Run TTL
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      if (!this._ttlP) this._ttlP = setInterval(this._ttlClean.bind(this), this._ttlInterval);
+      this._ttlP ??= setInterval(this._ttlClean.bind(this), this._ttlInterval);
     }
     return ele;
   }
@@ -302,12 +300,12 @@ export default class LRUCache<K, V> implements NodeChain {
           // Check object not modified
           if (ele === this._map.get(key)) {
             this._delete(ele!);
-            this._set(key, r.value, r.bytes || 0, this._ttl);
+            this._set(key, r.value, r.bytes ?? 0, this._ttl);
           }
           return r.value;
         });
       } else {
-        this._set(key, upsertResult.value, upsertResult.bytes || 0, this._ttl);
+        this._set(key, upsertResult.value, upsertResult.bytes ?? 0, this._ttl);
         return upsertResult.value;
       }
     } else return undefined;
@@ -438,7 +436,7 @@ export default class LRUCache<K, V> implements NodeChain {
       bytes += p.bytes;
       map.delete(p.key);
       if (this._onEvict !== undefined) {
-        this._onEvict(p as Metadata<K, V>);
+        this._onEvict(p satisfies Metadata<K, V>);
       }
       p = p._prev as Node<K, V>;
     }

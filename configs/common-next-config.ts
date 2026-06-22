@@ -207,7 +207,7 @@ export function getCommonDefines(projectRoot: string, stringify = true) {
 
   const defines = {
     'globalThis.__DEV__': isProd ? 'false' : 'true',
-    'process.env.PROJECT_ID': maybeStringify(getProjectIdFromPackageJson(projectRoot) as string),
+    'process.env.PROJECT_ID': maybeStringify(getProjectIdFromPackageJson(projectRoot)),
     'process.env.NEXTJS_ASSET_PREFIX': maybeStringify(prodAssetPrefix || ''),
     ...getSentryWebpackDefines(stringify),
   };
