@@ -37,13 +37,13 @@
     "docker-secret": ">=2",
     "echarts": ">=5",
     "eslint-config-next": "^16.2.1",
-    "eslint-plugin-storybook": "^10.2.19",
+    "eslint-plugin-storybook": ">=10",
     "exceljs": ">=4",
     "fast-safe-stringify": ">=2",
     "graphql": ">=16",
     "lodash-es": ">=4",
     "nanoid": ">=5",
-    "next": "^16.2.0",
+    "next": "^16.2.9",
     "next-intl": ">=3",
     "pino": ">=8",
     "pino-pretty": ">=10",
@@ -56,11 +56,10 @@
     "set-cookie-parser": ">=2"
   },
   "devDependencies": {
-    "@eslint/config-helpers": "^0.5.5",
+    "@eslint/config-helpers": "^0.6.0",
     "@eslint/core": "^1.2.1",
-    "@typescript-eslint/types": "^8.58.2",
-    "eslint-config-next": "^16.2.1",
-    "eslint-plugin-storybook": "^10.2.19",
-    "next": "^16.2.0"
+    "@typescript-eslint/types": "^8.61.1",
+    "eslint-config-next": "^16.2.9",
+    "eslint-plugin-storybook": "^10.4.6"
   }
 }
