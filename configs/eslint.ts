@@ -105,7 +105,10 @@ export function getGraphQLDocsConfig(dirs: string[]) {
     languageOptions: {
       parser: graphqlPlugin.parser,
     },
-    rules: graphqlPlugin.configs['flat/operations-recommended'].rules,
+    rules: {
+      ...graphqlPlugin.configs['flat/operations-recommended'].rules,
+      '@graphql-eslint/no-deprecated': 'warn',
+    },
     plugins: {
       '@graphql-eslint': graphqlPlugin as ESLintPlugin,
     },
