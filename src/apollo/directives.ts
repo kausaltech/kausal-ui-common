@@ -5,7 +5,7 @@ export type DirectiveArg = {
   name: string;
   variable: {
     name: string;
-    type: 'String' | 'ID' | 'PreviewMode';
+    type: 'String' | 'ID' | 'PreviewMode' | 'Boolean';
   };
 };
 
