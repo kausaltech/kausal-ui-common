@@ -79,9 +79,15 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           '&:hover': {
             borderColor: theme.themeColors.dark,
           } satisfies StyleOverrides<'MuiInputBase'>,
+
           '&.Mui-focused': {
             borderColor: theme.inputBtnFocusColor,
-            boxShadow: `0 0 0 0.25rem ${theme.inputBtnFocusColor}`,
+            boxShadow: `0 0 0 2px ${theme.inputBtnFocusColor}`,
+          } satisfies StyleOverrides<'MuiInputBase'>,
+
+          '&.Mui-error': {
+            borderColor: theme.graphColors.red050,
+            boxShadow: `0 0 0 2px ${theme.graphColors.red050}`,
           } satisfies StyleOverrides<'MuiInputBase'>,
         },
       },
@@ -90,14 +96,34 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
       styleOverrides: {
         root: {
           border: 0,
-          '& .MuiOutlinedInput-root': {
+
+          '.MuiOutlinedInput-root': {
             backgroundColor: theme.inputBg,
             borderRadius: theme.inputBorderRadius,
             border: 0,
-          } satisfies StyleOverrides<'MuiTextField'>,
-          '& .MuiInputLabel-root': {
+          },
+
+          '.MuiFilledInput-root': {
+            backgroundColor: theme.inputBg,
+            borderRadius: theme.inputBorderRadius,
+            borderColor: theme.graphColors.grey020,
+
+            '&.Mui-focused': {
+              backgroundColor: theme.inputBg,
+            },
+
+            ':hover': {
+              backgroundColor: theme.inputBg,
+            },
+          },
+
+          '.MuiInputLabel-root': {
             fontWeight: theme.formLabelFontWeight,
-          } satisfies StyleOverrides<'MuiTextField'>,
+
+            '&.Mui-focused': {
+              color: theme.textColor.primary,
+            },
+          },
         },
       },
     },
@@ -308,10 +334,17 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
       },
     },
     MuiCheckbox: {
+      defaultProps: {
+        disableRipple: true,
+      },
       styleOverrides: {
         root: {
           '&.Mui-checked': {
             color: theme.brandDark,
+          },
+          '&.Mui-focusVisible': {
+            borderRadius: theme.inputBorderRadius,
+            boxShadow: `0 0 0 2px ${theme.inputBtnFocusColor}`,
           },
         },
       },
