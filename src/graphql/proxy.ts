@@ -32,6 +32,7 @@ const PASS_HEADERS = [
   PATHS_INSTANCE_HOSTNAME_HEADER,
   WILDCARD_DOMAINS_HEADER,
   'authorization',
+  'x-public-user-token',
   'accept-language',
   'dnt',
   'referer',
