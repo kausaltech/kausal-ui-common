@@ -14,6 +14,8 @@ const getGlobalStyles = (theme: Theme) => css`
     --block-padding-top: ${theme.spaces.s400};
     --block-padding-bottom: ${theme.spaces.s400};
     --block-header-margin-bottom: ${theme.spaces.s300};
+    --inner-block-padding-x: ${theme.spaces.s200};
+    --inner-block-padding-y: ${theme.spaces.s300};
   }
 
   @media (min-width: ${theme.breakpointMd}) {
