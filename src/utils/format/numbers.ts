@@ -16,9 +16,12 @@ export function makeFormatter(
     significantDigits && significantDigits >= 1 && significantDigits <= 21
       ? significantDigits
       : undefined;
+  // Cap at 20, the maximum guaranteed across all JS engines. The Intl NumberFormat v3
+  // spec raised the ceiling to 100, but older engines still enforce 20 and throw a
+  // RangeError for anything higher (Sentry WATCH-UI-7MP).
   const fracDigits =
-    fractionDigits !== undefined && fractionDigits >= 0 && fractionDigits <= 100
-      ? fractionDigits
+    fractionDigits !== undefined && fractionDigits >= 0
+      ? Math.min(fractionDigits, 20)
       : undefined;
   if (typeof sigDigits === 'number' && typeof fracDigits === 'number') {
     // Significant digits wins for rounding; fraction digits caps the display.
