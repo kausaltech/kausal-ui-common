@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { IconButton, Tooltip } from '@mui/material';
 
 import useTranslations from '@common/i18n';
@@ -15,7 +13,7 @@ const PopoverTip = (props: PopoverTipProps) => {
   const t = useTranslations();
 
   return (
-    <Tooltip title={content} placement="top" arrow aria-label={t('definition')}>
+    <Tooltip title={content} placement="top" arrow aria-label={t('common.definition')}>
       <IconButton size="small" sx={{ height: '14px', width: '14px', p: 0, m: 0.25 }}>
         <svg
           xmlns="http://www.w3.org/2000/svg"

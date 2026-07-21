@@ -14,7 +14,7 @@ export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
       time: new Date(time).toISOString(),
       ...rest,
     };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method
     const logFunc = console[level] || console.log;
     try {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
