@@ -151,6 +151,9 @@ const DimensionalPieGraph = ({
         ...slice,
         name: `${labels[idx]}, ${formatNumber((slice.value / total) * 100)}%`,
       }));
+      // Largest slice first, like Plotly's default `sort: true`; combined with
+      // the counterclockwise layout below this also orders the legend by size.
+      namedSlices.sort((a, b) => b.value - a.value);
 
       return {
         key: colId,
@@ -190,6 +193,10 @@ const DimensionalPieGraph = ({
             type: 'pie',
             radius: [`${outerRadius * HOLE_RATIO}%`, `${outerRadius}%`],
             center: ['50%', '50%'],
+            // Draw counterclockwise starting from 6 o'clock, matching the old
+            // Plotly rendering
+            startAngle: 270,
+            clockwise: false,
             label: { show: false },
             data: pie.slices.map((slice) => ({
               name: slice.name,
