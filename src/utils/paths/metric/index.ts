@@ -40,6 +40,7 @@ export {
   getName,
   getUnit,
   getUnitShort,
+  overrideUnit,
   getForecastFrom,
   getHistoricalYears,
   getForecastYears,
