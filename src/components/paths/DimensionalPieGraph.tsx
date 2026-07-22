@@ -35,8 +35,10 @@ const Subplot = styled.div`
   color: ${({ theme }) => theme.textColor.tertiary};
 `;
 
-// Outer radius (percent of half the chart's smaller dimension) of the largest
-// pie; the other pies are scaled down relative to it by their totals.
+// Outer radius (percent of half the chart's smaller dimension) of the pie
+// with the largest total; the others scale so that pie AREA is proportional
+// to the total (radius ∝ √ratio) — perceptually honest, unlike the old
+// Plotly domain math that saturated at full size for ratios above ~0.53.
 const MAX_OUTER_RADIUS = 65;
 // Donut hole, as a fraction of the outer radius
 const HOLE_RATIO = 0.5;
@@ -125,9 +127,6 @@ const DimensionalPieGraph = ({
 
     // One pie per column category (e.g. per emission scope)
     const rawPies = yearData.categoryTypes[1].options.map((colId, cIdx) => {
-      // Signed column total; used only to scale the pies relative to each other
-      const signedTotal = yearData.rows.reduce((acc, row) => acc + (row[cIdx] ?? 0), 0);
-
       // Pie slice per row category
       const slices: Omit<PieSlice, 'name'>[] = [];
       const labels: string[] = [];
@@ -156,17 +155,15 @@ const DimensionalPieGraph = ({
       return {
         key: colId,
         name: yearData.allLabels.find((l) => l.id === colId)?.label || '',
-        signedTotal,
         total,
         slices: namedSlices,
       };
     });
 
-    const maxTotal = rawPies.reduce((max, pie) => Math.max(max, Math.abs(pie.signedTotal)), 0);
+    const maxTotal = rawPies.reduce((max, pie) => Math.max(max, pie.total), 0);
 
     return rawPies.map((pie) => {
-      const scale = maxTotal > 0 ? pie.total / maxTotal : 1;
-      const outerRadius = MAX_OUTER_RADIUS * scale;
+      const outerRadius = MAX_OUTER_RADIUS * (maxTotal > 0 ? Math.sqrt(pie.total / maxTotal) : 1);
       const hovers = pie.slices.map((slice) => slice.hover);
       const option: EChartsCoreOption = {
         tooltip: {
