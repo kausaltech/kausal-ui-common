@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import dynamic from 'next/dynamic';
-
 import styled from '@emotion/styled';
 
 import { useReactiveVar } from '@apollo/client/react';
 import type { DimensionalNodeMetricFragment } from '@generated/paths/graphql';
 import chroma from 'chroma-js';
+import type { EChartsCoreOption } from 'echarts/core';
 import { isEqual } from 'lodash-es';
 import { useLocale } from 'next-intl';
 
 import { activeGoalVar } from '@common/apollo/paths-cache';
+import { Chart } from '@common/components/Chart';
 import type { TFunction } from '@common/i18n';
 import { useTheme } from '@common/themes';
-import { formatWithFormatter, makeFormatter } from '@common/utils/format';
+import { formatWithFormatter, makeFormatter, sanitizeHtmlUnit } from '@common/utils/format';
 import {
   type SliceConfig,
   getDefaultSliceConfig,
@@ -30,11 +30,16 @@ const PlotsContainer = styled.div`
 `;
 
 const Subplot = styled.div`
+  width: 300px;
   font-size: ${({ theme }) => theme.fontSizeSm};
   color: ${({ theme }) => theme.textColor.tertiary};
 `;
 
-const Plot = dynamic(() => import('@/components/graphs/Plot'), { ssr: false });
+// Outer radius (percent of half the chart's smaller dimension) of the largest
+// pie; the other pies are scaled down relative to it by their totals.
+const MAX_OUTER_RADIUS = 65;
+// Donut hole, as a fraction of the outer radius
+const HOLE_RATIO = 0.5;
 
 type MetricDim = NonNullable<DimensionalNodeMetricFragment['metricDim']>;
 
@@ -51,6 +56,22 @@ type DimensionalPieGraphProps = {
   colorChange?: number;
   instance: InstanceContext;
   t: TFunction;
+};
+
+type PieSlice = {
+  /** Legend/series name: category label with its percentage share appended */
+  name: string;
+  value: number;
+  color: string;
+  /** Preformatted tooltip HTML: label, value and unit */
+  hover: string;
+};
+
+type Pie = {
+  key: string;
+  name: string;
+  total: number;
+  option: EChartsCoreOption;
 };
 
 const DimensionalPieGraph = ({
@@ -92,169 +113,120 @@ const DimensionalPieGraph = ({
     setSliceConfig(newDefault);
   }, [activeGoal, parsedMetric]);
 
-  const yearData = getSingleYear(parsedMetric, endYear, sliceConfig.categories);
+  const yearData = useMemo(
+    () => getSingleYear(parsedMetric, endYear, sliceConfig.categories),
+    [parsedMetric, endYear, sliceConfig]
+  );
 
   const longUnit = overrideUnit(parsedMetric, metric.unit, t);
 
-  const plotData: {
-    data: Partial<Plotly.PlotData>;
-    layout: Partial<Plotly.Layout>;
-    total: 0 | number;
-  }[] = [];
-  const defaultLayout: Partial<Plotly.Layout> = {
-    width: 300,
-    modebar: {
-      remove: [
-        'zoom2d',
-        'zoomIn2d',
-        'zoomOut2d',
-        'pan2d',
-        'select2d',
-        'lasso2d',
-        'autoScale2d',
-        'resetScale2d',
-      ],
-      color: theme.graphColors.grey090,
-      bgcolor: theme.graphColors.grey010,
-      activecolor: theme.brandDark,
-    },
-    dragmode: false,
-    showlegend: true,
-    legend: {
-      x: 0.5,
-      y: -0.1,
-      xanchor: 'center',
-      yanchor: 'top',
-      orientation: 'h',
-      itemclick: false,
-      itemdoubleclick: false,
-    },
-    margin: {
-      l: 50,
-      r: 50,
-      b: 50,
-      t: 50,
-      pad: 4,
-    },
-    autosize: false,
-  };
+  const pies: Pie[] = useMemo(() => {
+    const unit = sanitizeHtmlUnit(metric.unit.htmlShort);
 
-  let maxTotal = 0;
+    // One pie per column category (e.g. per emission scope)
+    const rawPies = yearData.categoryTypes[1].options.map((colId, cIdx) => {
+      // Signed column total; used only to scale the pies relative to each other
+      const signedTotal = yearData.rows.reduce((acc, row) => acc + (row[cIdx] ?? 0), 0);
 
-  // Pie per scope
-  yearData.categoryTypes[1].options.forEach((colId, cIdx) => {
-    const colTotals = yearData.rows.reduce((acc, row) => {
-      return row[cIdx] ? row[cIdx] + acc : acc;
-    }, 0);
-    // Remember the largest total for scaling the pies
-    if (Math.abs(colTotals) > maxTotal) {
-      maxTotal = Math.abs(colTotals);
-    }
-    // Pie segment per sector
-    const pieSegmentLabels: string[] = [];
-    const pieSegmentValues: (number | null)[] = [];
-    const pieSegmentColors: string[] = [];
-    const pieSegmentHovers: string[] = [];
-    yearData.categoryTypes[0].options.forEach((rowId, rIdx) => {
-      const datum = yearData.rows[rIdx][cIdx];
-      if (datum != 0) {
-        pieSegmentLabels.push(`${yearData.allLabels.find((l) => l.id === rowId)?.label}` || '');
-        pieSegmentValues.push(datum ? Math.abs(datum) : null);
-        const segmentColor = yearData.allLabels.find((l) => l.id === rowId)?.color || '#333';
-        pieSegmentColors.push(chroma(segmentColor).brighten(colorChange).hex());
-        pieSegmentHovers.push(
-          `${yearData.allLabels.find((l) => l.id === rowId)?.label}, ${
-            datum && formatNumber(Math.abs(datum))
-          } ${datum && metric.unit.htmlShort}` || ''
-        );
-      }
+      // Pie slice per row category
+      const slices: Omit<PieSlice, 'name'>[] = [];
+      const labels: string[] = [];
+      yearData.categoryTypes[0].options.forEach((rowId, rIdx) => {
+        const datum = yearData.rows[rIdx][cIdx];
+        if (datum == null || datum === 0) return;
+        const dimDetails = yearData.allLabels.find((l) => l.id === rowId);
+        const label = dimDetails?.label ?? '';
+        const value = Math.abs(datum);
+        labels.push(label);
+        slices.push({
+          value,
+          color: chroma(dimDetails?.color || '#333')
+            .brighten(colorChange)
+            .hex(),
+          hover: `${label}, <b>${formatNumber(value)}</b> ${unit}`,
+        });
+      });
+
+      const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+      const namedSlices: PieSlice[] = slices.map((slice, idx) => ({
+        ...slice,
+        name: `${labels[idx]}, ${formatNumber((slice.value / total) * 100)}%`,
+      }));
+
+      return {
+        key: colId,
+        name: yearData.allLabels.find((l) => l.id === colId)?.label || '',
+        signedTotal,
+        total,
+        slices: namedSlices,
+      };
     });
 
-    // Calculate total and percentages
-    const total =
-      pieSegmentValues.reduce((sum, value) => {
-        const numSum = sum === null ? 0 : sum;
-        const numValue = value === null ? 0 : value;
-        return numSum + numValue;
-      }, 0) || 0;
-    const percentages = pieSegmentValues.map((value) =>
-      value != null ? formatNumber((value / total) * 100) : null
-    );
+    const maxTotal = rawPies.reduce((max, pie) => Math.max(max, Math.abs(pie.signedTotal)), 0);
 
-    // Create new labels with percentages
-    const newLabels = pieSegmentLabels.map((label, index) => `${label}, ${percentages[index]}%`);
-
-    plotData.push({
-      total: total,
-      layout: {
-        ...defaultLayout,
-        annotations: [
+    return rawPies.map((pie) => {
+      const scale = maxTotal > 0 ? pie.total / maxTotal : 1;
+      const outerRadius = MAX_OUTER_RADIUS * scale;
+      const hovers = pie.slices.map((slice) => slice.hover);
+      const option: EChartsCoreOption = {
+        tooltip: {
+          trigger: 'item',
+          formatter: (params: { dataIndex: number }) => hovers[params.dataIndex],
+        },
+        legend: {
+          bottom: 0,
+          selectedMode: false,
+        },
+        // Total in the middle of the donut
+        title: {
+          text: formatNumber(pie.total),
+          left: 'center',
+          top: 'middle',
+          textStyle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: theme.graphColors.grey050,
+          },
+        },
+        series: [
           {
-            font: {
-              size: 18,
-              color: theme.graphColors.grey050,
-            },
-            showarrow: false,
-            text: `<b>${formatNumber(total)}</b>`,
-            x: 0.5,
-            y: 0.5,
+            type: 'pie',
+            radius: [`${outerRadius * HOLE_RATIO}%`, `${outerRadius}%`],
+            center: ['50%', '50%'],
+            label: { show: false },
+            data: pie.slices.map((slice) => ({
+              name: slice.name,
+              value: slice.value,
+              itemStyle: { color: slice.color },
+            })),
           },
         ],
-      },
-      data: {
-        type: 'pie',
-        hole: 0.5,
-        labels: newLabels,
-        values: pieSegmentValues,
-        hovertext: pieSegmentHovers,
-        textinfo: 'none',
-        hoverinfo: 'text',
-        marker: {
-          colors: pieSegmentColors,
-        },
-        name: yearData.allLabels.find((l) => l.id === colId)?.label || '',
-      },
+      };
+      return { key: pie.key, name: pie.name, total: pie.total, option };
     });
-  });
-
-  plotData.forEach((plot) => {
-    const scaleTotal = plot.total / maxTotal;
-    const scalePie = 0.95 * scaleTotal; // Use this to scale multiple pies relative to each other
-    plot.data.domain = {
-      x: [0.5 - scalePie, 0.5 + scalePie],
-      y: [0.5 - scalePie, 0.5 + scalePie],
-    };
-  });
-
-  const plotConfig = {
-    displaylogo: false,
-    responsive: true,
-  };
+  }, [yearData, metric.unit.htmlShort, colorChange, formatNumber, theme.graphColors.grey050]);
 
   return (
-    <>
-      <PlotsContainer className="mt-3">
-        {plotData.map(
-          (plot) =>
-            plot.total !== 0 && (
-              <Subplot key={plot.data.name}>
-                <h5>
-                  {plot.data.name} {endYear}
-                </h5>
-                <span dangerouslySetInnerHTML={{ __html: longUnit }} />
-                <Plot
-                  data={[plot.data]}
-                  layout={plot.layout}
-                  useResizeHandler
-                  config={plotConfig}
-                  style={{ minWidth: '300px', maxWidth: '600px' }}
-                  noValidate
-                />
-              </Subplot>
-            )
-        )}
-      </PlotsContainer>
-    </>
+    <PlotsContainer className="mt-3">
+      {pies.map(
+        (pie) =>
+          pie.total !== 0 && (
+            <Subplot key={pie.key}>
+              <h5>
+                {pie.name} {endYear}
+              </h5>
+              <span dangerouslySetInnerHTML={{ __html: longUnit }} />
+              <Chart
+                isLoading={false}
+                data={pie.option}
+                height="380px"
+                withResizeLegend={false}
+                locale={locale}
+              />
+            </Subplot>
+          )
+      )}
+    </PlotsContainer>
   );
 };
 
