@@ -104,7 +104,18 @@ type Props = {
   isLoading: boolean;
   data?: echarts.EChartsCoreOption;
   height?: string;
+  /**
+   * Fires for clicks anywhere on the canvas (also empty plot area), with the
+   * position converted to grid data coordinates. For events on rendered
+   * marks, use `onEvents`.
+   */
   onZrClick?: (clickedDataIndex: [number, number]) => void;
+  /**
+   * ECharts event handlers by event name (e.g. 'click', 'updateAxisPointer').
+   * Handlers may change freely (read through a ref), but the set of event
+   * names must stay stable.
+   */
+  onEvents?: Record<string, (params: unknown) => void>;
   className?: string;
   // Resize the legend when the chart loaded or resized, also adds additional space to the bottom of the chart
   withResizeLegend?: boolean;
@@ -118,6 +129,7 @@ export function Chart({
   data,
   height = '400px',
   onZrClick,
+  onEvents,
   className,
   withResizeLegend = true,
   renderer = 'canvas',
@@ -128,6 +140,11 @@ export function Chart({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const theme = useBaseTheme();
   const [isRendering, setIsRendering] = useState(true);
+
+  const onEventsRef = useRef(onEvents);
+  useEffect(() => {
+    onEventsRef.current = onEvents;
+  }, [onEvents]);
 
   useImperativeHandle(
     ref,
@@ -147,6 +164,12 @@ export function Chart({
 
     chart.on('finished', () => {
       setIsRendering(false);
+    });
+
+    Object.keys(onEventsRef.current ?? {}).forEach((eventName) => {
+      chart.on(eventName, (params: unknown) => {
+        onEventsRef.current?.[eventName]?.(params);
+      });
     });
 
     const throttledResize = throttle(
