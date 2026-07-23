@@ -184,16 +184,23 @@ export function Chart({
       },
       1000,
       {
-        leading: false,
+        // Leading so a chart mounted in a hidden/collapsed container renders
+        // immediately when the container gets its real size
+        leading: true,
         trailing: true,
       }
     );
 
-    window.addEventListener('resize', throttledResize);
+    // Observe the container rather than the window: containers also change
+    // size without a window resize (collapsible cards, panels opening, ...)
+    const resizeObserver = new ResizeObserver(throttledResize);
+    if (wrapperRef.current) {
+      resizeObserver.observe(wrapperRef.current);
+    }
 
     return () => {
       throttledResize.flush();
-      window.removeEventListener('resize', throttledResize);
+      resizeObserver.disconnect();
       chart.clear();
       chart.dispose();
     };
