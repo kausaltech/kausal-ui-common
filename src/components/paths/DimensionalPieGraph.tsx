@@ -16,6 +16,7 @@ import { useTheme } from '@common/themes';
 import { formatWithFormatter, makeFormatter, sanitizeHtmlUnit } from '@common/utils/format';
 import {
   type SliceConfig,
+  filterScenario,
   getDefaultSliceConfig,
   getSingleYear,
   isForecastYear,
@@ -94,7 +95,10 @@ const DimensionalPieGraph = ({
   }, [locale, instance.features?.showSignificantDigits, instance.features?.maximumFractionDigits]);
   const theme = useTheme();
   const activeGoal = useReactiveVar(activeGoalVar);
-  const parsedMetric = useMemo(() => parseMetric(metric), [metric]);
+  // The metric may include a scenario dimension (queried `withScenarios`);
+  // this view shows a single-scenario distribution, so collapse it to the
+  // default scenario before parsing.
+  const parsedMetric = useMemo(() => parseMetric(filterScenario(metric)), [metric]);
   const isForecast = isForecastYear(parsedMetric, endYear);
   const defaultConfig = getDefaultSliceConfig(parsedMetric, activeGoal);
   const [sliceConfig, setSliceConfig] = useState<SliceConfig>(defaultConfig);
