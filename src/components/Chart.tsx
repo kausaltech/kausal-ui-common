@@ -11,6 +11,7 @@ import {
 } from 'echarts/charts';
 import {
   AriaComponent,
+  AxisPointerComponent,
   DatasetComponent,
   type DatasetComponentOption,
   GraphicComponent,
@@ -40,6 +41,7 @@ import './register-echarts-locales';
 echarts.use([
   BarChart,
   CustomChart,
+  AxisPointerComponent,
   TitleComponent,
   TooltipComponent,
   ToolboxComponent,
