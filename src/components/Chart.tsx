@@ -8,7 +8,6 @@ import {
   type LineSeriesOption,
   PieChart,
   type PieSeriesOption,
-  SankeyChart,
 } from 'echarts/charts';
 import {
   AriaComponent,
@@ -59,9 +58,11 @@ echarts.use([
   MarkLineComponent,
   MarkAreaComponent,
   PieChart,
-  SankeyChart,
   AriaComponent,
 ]);
+// Rarely used chart types (e.g. SankeyChart) are deliberately NOT registered
+// here — register them with `echarts.use([...])` in the consuming component,
+// so they end up in that route's chunk instead of every chart-bearing page.
 
 // Hack to add margin on the chart to fit the legend
 // Based on https://github.com/apache/echarts/issues/15654
