@@ -8,6 +8,7 @@ import {
   type LineSeriesOption,
   PieChart,
   type PieSeriesOption,
+  SankeyChart,
 } from 'echarts/charts';
 import {
   AriaComponent,
@@ -58,6 +59,7 @@ echarts.use([
   MarkLineComponent,
   MarkAreaComponent,
   PieChart,
+  SankeyChart,
   AriaComponent,
 ]);
 
