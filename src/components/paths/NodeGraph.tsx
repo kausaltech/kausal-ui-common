@@ -417,7 +417,7 @@ export default function NodeGraph(props: NodeGraphProps) {
       },
     },
     aria: {
-      show: true,
+      enabled: true,
     },
     legend: {
       orient: 'horizontal',

@@ -173,6 +173,7 @@ const DimensionalPieGraph = ({
       const outerRadius = MAX_OUTER_RADIUS * (maxTotal > 0 ? Math.sqrt(pie.total / maxTotal) : 1);
       const hovers = pie.slices.map((slice) => slice.hover);
       const option: EChartsCoreOption = {
+        aria: { enabled: true },
         tooltip: {
           trigger: 'item',
           formatter: (params: { dataIndex: number }) => hovers[params.dataIndex],
