@@ -16,13 +16,12 @@ import {
   type MetricCategoryChoice,
   type MetricCategoryValues,
   type MetricSlice,
-  type ParsedMetric,
   type SliceConfig,
   flatten,
   getDefaultSliceConfig,
   getFilteredYears,
   getGoalsForChoice,
-  hasDimension,
+  overrideUnit,
   parseMetric,
   sliceBy,
 } from '@common/utils/paths/metric';
@@ -61,25 +60,6 @@ type SiteContext = {
   scenarios: SiteScenario[];
   baselineName?: string | null;
   minYear: number;
-};
-
-const overrideUnit = (
-  cube: ParsedMetric,
-  unit: { htmlShort: string; htmlLong?: string | null; short?: string | null },
-  t: TFunction
-) => {
-  let longUnit = unit.htmlShort;
-  // FIXME: Nasty hack to show 'CO2e' where it might be applicable until
-  // the backend gets proper support for unit specifiers.
-  // t∕(Einw.·a)
-  if (hasDimension(cube, 'emission_scope') && !hasDimension(cube, 'greenhouse_gases')) {
-    if (unit.short === 't/Einw./a') {
-      longUnit = t.raw('tco2-e-inhabitant') as string;
-    } else if (unit.short === 'kt/a') {
-      longUnit = t.raw('ktco2-e') as string;
-    }
-  }
-  return longUnit;
 };
 
 type DimensionalNodeVisualisationProps = {

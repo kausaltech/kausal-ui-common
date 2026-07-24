@@ -12,6 +12,12 @@ import { useLocale, useTranslations } from 'next-intl';
 import { tint } from 'polished';
 
 import { Chart, type ChartHandle } from '@common/components/Chart';
+import {
+  type EChartsLocalePack,
+  formatAriaTemplate,
+  stripHtmlForAria,
+} from '@common/components/chart-aria';
+import { getEChartsLocaleStrings } from '@common/components/register-echarts-locales';
 import { sanitizeHtmlUnit } from '@common/utils/format';
 
 /**
@@ -84,6 +90,9 @@ type NodeGraphProps = {
 type DataTable = (string | number | null | undefined)[][];
 
 // Constants
+// Above this many datapoints (years × categories) the aria description
+// switches to its compact form (category names once, per-year specials only)
+const MAX_ARIA_DATAPOINTS = 100;
 const CHART_HEIGHT = '360px';
 const BAR_WIDTH = '85%';
 const BAR_MAX_WIDTH = '50';
@@ -362,6 +371,99 @@ export default function NodeGraph(props: NodeGraphProps) {
     };
   };
 
+  // Screen-reader description mirroring the tooltip: for every year, the
+  // category values (visual top of the stack first) followed by the special
+  // series (total, goal, baseline, progress), with the same labels, value
+  // formatting and Measured/Forecast/Comparison-year annotation. The native
+  // aria generator would instead read the raw dataset tuples.
+  const buildAriaDescription = (): string => {
+    const source = datasetIndices.data >= 0 ? fullDataset[datasetIndices.data]?.source : undefined;
+    if (!source || source.length < 2) return '';
+    const localePack: EChartsLocalePack = getEChartsLocaleStrings(locale);
+    const unitText = stripHtmlForAria(unit.htmlShort);
+    const header = source[0];
+    const categoryRows = source.slice(1);
+
+    // Same order as the tooltip's special rows (Total, Progress, Baseline, Goal)
+    const specialIndices = {
+      Total: datasetIndices.total,
+      Progress: datasetIndices.progress,
+      Baseline: datasetIndices.baseline,
+      Goal: datasetIndices.goal,
+    } as const;
+    // The special tables share the main table's layout: a header row of years
+    // and a single value row — so the main table's column index applies
+    const specialRows = (Object.keys(specialIndices) as (keyof typeof specialIndices)[]).flatMap(
+      (key) => {
+        const idx = specialIndices[key];
+        const row = idx >= 0 ? fullDataset[idx]?.source?.[1] : undefined;
+        return row ? [{ label: specialSeriesLabels[key], row }] : [];
+      }
+    );
+
+    const yearColumns: { colIdx: number; year: number }[] = [];
+    header.forEach((cell, colIdx) => {
+      if (colIdx === 0 || cell == null || cell === '') return;
+      const year = Number(cell);
+      if (Number.isFinite(year)) yearColumns.push({ colIdx, year });
+    });
+
+    // With many datapoints a full year-by-category listing becomes unwieldy
+    // to listen to, so fall back to a compact form: the category names once,
+    // and per-year entries with only the special rows.
+    const compact = yearColumns.length * categoryRows.length > MAX_ARIA_DATAPOINTS;
+
+    let categoryList = '';
+    if (compact) {
+      const names = [...categoryRows]
+        .reverse()
+        .map((row) => String(row[0]))
+        .filter((name) => name !== '');
+      if (names.length > 0) {
+        categoryList = `. ${names.join(', ')}`;
+      }
+    }
+
+    const yearSummaries: string[] = [];
+    yearColumns.forEach(({ colIdx, year }) => {
+      const parts: string[] = [];
+      if (!compact) {
+        [...categoryRows].reverse().forEach((row) => {
+          const raw = row[colIdx];
+          if (typeof raw !== 'number') return;
+          const value = formatValue(raw);
+          if (value === '-') return;
+          parts.push(`${String(row[0])}: ${value} ${unitText}`);
+        });
+      }
+      specialRows.forEach(({ label, row }) => {
+        const raw = row[colIdx];
+        if (typeof raw !== 'number') return;
+        const value = formatValue(raw);
+        if (value === '-') return;
+        parts.push(`${label}: ${value} ${unitText}`);
+      });
+      if (parts.length === 0) return;
+      const yearLabel = isForecastYear(year)
+        ? (predictionLabel ?? resolvedLabels.forecast)
+        : referenceYear && year === referenceYear
+          ? resolvedLabels.comparisonYear
+          : resolvedLabels.measured;
+      yearSummaries.push(`${year} (${yearLabel}): ${parts.join(', ')}`);
+    });
+    if (yearSummaries.length === 0 && !categoryList) return '';
+
+    return (
+      (title
+        ? formatAriaTemplate(localePack.aria?.general?.withTitle, { title })
+        : formatAriaTemplate(localePack.aria?.general?.withoutTitle)) +
+      (subtitle ? `. ${subtitle}` : '') +
+      categoryList +
+      (yearSummaries.length > 0 ? `. ${yearSummaries.join('. ')}` : '') +
+      '.'
+    );
+  };
+
   const series = [
     ...(createMainSeries(
       fullDataset,
@@ -417,7 +519,8 @@ export default function NodeGraph(props: NodeGraphProps) {
       },
     },
     aria: {
-      show: true,
+      enabled: true,
+      label: { description: buildAriaDescription() },
     },
     legend: {
       orient: 'horizontal',
