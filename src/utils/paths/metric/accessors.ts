@@ -1,3 +1,6 @@
+import type { TFunction } from '@common/i18n';
+
+import { hasDimension } from './dimensions';
 import type { NodeMetricInput, ParsedMetric } from './types';
 
 /**
@@ -19,6 +22,28 @@ export function getUnit(metric: ParsedMetric): string {
  */
 export function getUnitShort(metric: ParsedMetric): string {
   return metric.unit.short;
+}
+
+/**
+ * Get the long HTML unit for display, overriding it for known emission units.
+ */
+export function overrideUnit(
+  metric: ParsedMetric,
+  unit: { htmlShort: string; htmlLong?: string | null; short?: string | null },
+  t: TFunction
+): string {
+  let longUnit = unit.htmlShort;
+  // FIXME: Nasty hack to show 'CO2e' where it might be applicable until
+  // the backend gets proper support for unit specifiers.
+  // t∕(Einw.·a)
+  if (hasDimension(metric, 'emission_scope') && !hasDimension(metric, 'greenhouse_gases')) {
+    if (unit.short === 't/Einw./a') {
+      longUnit = t.raw('tco2-e-inhabitant') as string;
+    } else if (unit.short === 'kt/a') {
+      longUnit = t.raw('ktco2-e') as string;
+    }
+  }
+  return longUnit;
 }
 
 /**

@@ -33,13 +33,14 @@ export type {
 } from './types';
 
 // Parse
-export { parseMetric } from './parse';
+export { parseMetric, filterScenario } from './parse';
 
 // Accessors
 export {
   getName,
   getUnit,
   getUnitShort,
+  overrideUnit,
   getForecastFrom,
   getHistoricalYears,
   getForecastYears,
