@@ -10,7 +10,7 @@ import { useLocale } from 'next-intl';
 import { activeGoalVar } from '@common/apollo/paths-cache';
 import type { TFunction } from '@common/i18n';
 import { useTheme } from '@common/themes';
-import { formatWithFormatter, makeFormatter } from '@common/utils/format';
+import { formatWithFormatter, makeInstanceFormatter } from '@common/utils/format';
 import { genColorsFromTheme, setUniqueColors } from '@common/utils/paths/colors';
 import {
   type MetricCategoryChoice,
@@ -103,13 +103,9 @@ export default function DimensionalNodeVisualisation({
   const theme = useTheme();
   const locale = useLocale();
   const formatValue = useMemo(() => {
-    const formatter = makeFormatter(
-      locale,
-      instance.features?.showSignificantDigits ?? undefined,
-      instance.features?.maximumFractionDigits ?? undefined
-    );
+    const formatter = makeInstanceFormatter(locale, instance.features);
     return (value: number) => formatWithFormatter(formatter, value);
-  }, [locale, instance.features?.maximumFractionDigits]);
+  }, [locale, instance.features?.showSignificantDigits, instance.features?.maximumFractionDigits]);
   const scenarios = site?.scenarios ?? [];
   const hasProgressTracking = metricHasProgressTrackingScenario(metric, scenarios);
 

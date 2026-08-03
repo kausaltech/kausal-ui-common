@@ -13,7 +13,7 @@ import { activeGoalVar } from '@common/apollo/paths-cache';
 import { Chart } from '@common/components/Chart';
 import type { TFunction } from '@common/i18n';
 import { useTheme } from '@common/themes';
-import { formatWithFormatter, makeFormatter, sanitizeHtmlUnit } from '@common/utils/format';
+import { formatWithFormatter, makeInstanceFormatter, sanitizeHtmlUnit } from '@common/utils/format';
 import {
   type SliceConfig,
   filterScenario,
@@ -86,11 +86,7 @@ const DimensionalPieGraph = ({
 }: DimensionalPieGraphProps) => {
   const locale = useLocale();
   const formatNumber = useMemo(() => {
-    const formatter = makeFormatter(
-      locale,
-      instance.features?.showSignificantDigits ?? undefined,
-      instance.features?.maximumFractionDigits ?? undefined
-    );
+    const formatter = makeInstanceFormatter(locale, instance.features);
     return (value: number) => formatWithFormatter(formatter, value);
   }, [locale, instance.features?.showSignificantDigits, instance.features?.maximumFractionDigits]);
   const theme = useTheme();

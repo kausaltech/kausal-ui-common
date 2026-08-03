@@ -1,3 +1,5 @@
+export const DEFAULT_SIGNIFICANT_DIGITS = 2;
+
 /**
  * Creates an Intl.NumberFormat-based formatter with optional significant digits
  * and/or fraction digits constraints.
@@ -31,6 +33,33 @@ export function makeFormatter(
     maximumFractionDigits: fracDigits,
     maximumSignificantDigits: sigDigits,
   });
+}
+
+type NumberFormatFeatures =
+  | {
+      showSignificantDigits?: number | null;
+      maximumFractionDigits?: number | null;
+    }
+  | null
+  | undefined;
+
+/**
+ * Creates a formatter from paths instance feature settings.
+ * Falls back to DEFAULT_SIGNIFICANT_DIGITS when the instance configures neither
+ * significant digits nor fraction digits.
+ */
+export function makeInstanceFormatter(
+  locale: string,
+  features: NumberFormatFeatures
+): { format: (value: number) => string } {
+  const significantDigits = features?.showSignificantDigits ?? undefined;
+  const fractionDigits = features?.maximumFractionDigits ?? undefined;
+  return makeFormatter(
+    locale,
+    significantDigits ??
+      (typeof fractionDigits === 'number' ? undefined : DEFAULT_SIGNIFICANT_DIGITS),
+    fractionDigits
+  );
 }
 
 /**
