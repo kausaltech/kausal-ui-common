@@ -388,7 +388,9 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
     },
     MuiCircularProgress: {
       styleOverrides: {
-        root: {
+        // Scoped to colorPrimary (the default) so `color="inherit"` still works
+        // for spinners that need to match surrounding text on colored surfaces.
+        colorPrimary: {
           color: theme.brandDark,
         },
       },
