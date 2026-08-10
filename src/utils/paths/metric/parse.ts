@@ -2,10 +2,46 @@ import type {
   DimCats,
   MetricCategoryGroup,
   MetricDimension,
+  MetricDimensionInput,
   MetricInput,
   MetricRow,
   ParsedMetric,
 } from './types';
+
+function isScenarioDim(dim: MetricDimensionInput) {
+  return dim.id.endsWith(':scenario:ScenarioName');
+}
+
+/**
+ * Filter metric data to a single scenario, dropping the scenario dimension.
+ *
+ * When the metric was queried with `withScenarios`, the backend adds a
+ * scenario dimension. Components that show single-scenario data should
+ * collapse it with this before calling `parseMetric`.
+ *
+ * Assumes the scenario dimension is the outermost dimension in the value
+ * ordering, which is how the backend emits it.
+ *
+ * @param scenarioId - The scenario to keep. If not found, the first scenario
+ *   category is used.
+ */
+export function filterScenario(data: MetricInput, scenarioId: string = 'default'): MetricInput {
+  const scenarioDim = data.dimensions.find(isScenarioDim);
+  if (!scenarioDim) return data;
+
+  const scenarioCat = scenarioDim.categories.find((cat) => cat.originalId === scenarioId);
+  const scenarioCatIndex = scenarioCat ? scenarioDim.categories.indexOf(scenarioCat) : 0;
+  const valuesPerScenario = data.values.length / scenarioDim.categories.length;
+
+  return {
+    ...data,
+    dimensions: data.dimensions.filter((dim) => !isScenarioDim(dim)),
+    values: data.values.slice(
+      scenarioCatIndex * valuesPerScenario,
+      (scenarioCatIndex + 1) * valuesPerScenario
+    ),
+  };
+}
 
 /**
  * Creates flattened rows from the metric data.

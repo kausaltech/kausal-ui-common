@@ -1,5 +1,5 @@
 #syntax=docker/dockerfile:1.22-labs
-ARG base_image=node:24-alpine3.22
+ARG base_image=node:26-alpine3.23
 
 #
 # Install dependencies
@@ -21,6 +21,7 @@ COPY kausal_common/ ./kausal_common/
 RUN --mount=type=secret,id=NPM_USER --mount=type=secret,id=NPM_PASSWORD --mount=type=cache,target=/cache <<EOF
   echo "Setting up npm registry"
   set -e
+  npm install -g corepack
   corepack enable pnpm npm
   if [ ! -z "${NPM_REGISTRY_SERVER}" ] ; then
     echo "Using custom registry at: ${NPM_REGISTRY_SERVER}"
@@ -147,6 +148,7 @@ ENV \
 RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN --mount=type=cache,target=/app/.next/cache <<EOF
   echo "Building NextJS bundle"
   set -e
+  npm install -g corepack
   corepack enable
   pnpm build
   if [ ${CODE_COVERAGE} -ne 1 ]; then

@@ -11,6 +11,7 @@ import {
 } from 'echarts/charts';
 import {
   AriaComponent,
+  AxisPointerComponent,
   DatasetComponent,
   type DatasetComponentOption,
   GraphicComponent,
@@ -40,6 +41,7 @@ import './register-echarts-locales';
 echarts.use([
   BarChart,
   CustomChart,
+  AxisPointerComponent,
   TitleComponent,
   TooltipComponent,
   ToolboxComponent,
@@ -58,6 +60,9 @@ echarts.use([
   PieChart,
   AriaComponent,
 ]);
+// Rarely used chart types (e.g. SankeyChart) are deliberately NOT registered
+// here — register them with `echarts.use([...])` in the consuming component,
+// so they end up in that route's chunk instead of every chart-bearing page.
 
 // Hack to add margin on the chart to fit the legend
 // Based on https://github.com/apache/echarts/issues/15654
@@ -104,7 +109,18 @@ type Props = {
   isLoading: boolean;
   data?: echarts.EChartsCoreOption;
   height?: string;
+  /**
+   * Fires for clicks anywhere on the canvas (also empty plot area), with the
+   * position converted to grid data coordinates. For events on rendered
+   * marks, use `onEvents`.
+   */
   onZrClick?: (clickedDataIndex: [number, number]) => void;
+  /**
+   * ECharts event handlers by event name (e.g. 'click', 'updateAxisPointer').
+   * Handlers may change freely (read through a ref), but the set of event
+   * names must stay stable.
+   */
+  onEvents?: Record<string, (params: unknown) => void>;
   className?: string;
   // Resize the legend when the chart loaded or resized, also adds additional space to the bottom of the chart
   withResizeLegend?: boolean;
@@ -118,6 +134,7 @@ export function Chart({
   data,
   height = '400px',
   onZrClick,
+  onEvents,
   className,
   withResizeLegend = true,
   renderer = 'canvas',
@@ -128,6 +145,11 @@ export function Chart({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const theme = useBaseTheme();
   const [isRendering, setIsRendering] = useState(true);
+
+  const onEventsRef = useRef(onEvents);
+  useEffect(() => {
+    onEventsRef.current = onEvents;
+  }, [onEvents]);
 
   useImperativeHandle(
     ref,
@@ -149,6 +171,12 @@ export function Chart({
       setIsRendering(false);
     });
 
+    Object.keys(onEventsRef.current ?? {}).forEach((eventName) => {
+      chart.on(eventName, (params: unknown) => {
+        onEventsRef.current?.[eventName]?.(params);
+      });
+    });
+
     const throttledResize = throttle(
       () => {
         chart.resize();
@@ -159,16 +187,23 @@ export function Chart({
       },
       1000,
       {
-        leading: false,
+        // Leading so a chart mounted in a hidden/collapsed container renders
+        // immediately when the container gets its real size
+        leading: true,
         trailing: true,
       }
     );
 
-    window.addEventListener('resize', throttledResize);
+    // Observe the container rather than the window: containers also change
+    // size without a window resize (collapsible cards, panels opening, ...)
+    const resizeObserver = new ResizeObserver(throttledResize);
+    if (wrapperRef.current) {
+      resizeObserver.observe(wrapperRef.current);
+    }
 
     return () => {
       throttledResize.flush();
-      window.removeEventListener('resize', throttledResize);
+      resizeObserver.disconnect();
       chart.clear();
       chart.dispose();
     };

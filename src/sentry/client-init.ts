@@ -67,7 +67,7 @@ export function initSentryBrowser() {
     sendDefaultPii: true,
     enabled: !!(envDsn || spotlightUrl),
     maxValueLength: !envDsn && spotlightUrl ? 10000 : undefined,
-    ignoreErrors: ['NEXT_NOT_FOUND'],
+    ignoreErrors: ['NEXT_NOT_FOUND', 'Failed to find Server Action'],
     parentSpanIsAlwaysRootSpan: false,
     tracesSampler(ctx: SamplingContext) {
       if (otelDebug) {

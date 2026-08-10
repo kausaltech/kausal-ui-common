@@ -1,3 +1,5 @@
+export const DEFAULT_SIGNIFICANT_DIGITS = 2;
+
 /**
  * Creates an Intl.NumberFormat-based formatter with optional significant digits
  * and/or fraction digits constraints.
@@ -16,9 +18,12 @@ export function makeFormatter(
     significantDigits && significantDigits >= 1 && significantDigits <= 21
       ? significantDigits
       : undefined;
+  // Cap at 20, the maximum guaranteed across all JS engines. The Intl NumberFormat v3
+  // spec raised the ceiling to 100, but older engines still enforce 20 and throw a
+  // RangeError for anything higher (Sentry WATCH-UI-7MP).
   const fracDigits =
-    fractionDigits !== undefined && fractionDigits >= 0 && fractionDigits <= 100
-      ? fractionDigits
+    fractionDigits !== undefined && fractionDigits >= 0
+      ? Math.min(fractionDigits, 20)
       : undefined;
   if (typeof sigDigits === 'number' && typeof fracDigits === 'number') {
     // Significant digits wins for rounding; fraction digits caps the display.
@@ -31,6 +36,33 @@ export function makeFormatter(
     maximumFractionDigits: fracDigits,
     maximumSignificantDigits: sigDigits,
   });
+}
+
+type NumberFormatFeatures =
+  | {
+      showSignificantDigits?: number | null;
+      maximumFractionDigits?: number | null;
+    }
+  | null
+  | undefined;
+
+/**
+ * Creates a formatter from paths instance feature settings.
+ * Falls back to DEFAULT_SIGNIFICANT_DIGITS when the instance configures neither
+ * significant digits nor fraction digits.
+ */
+export function makeInstanceFormatter(
+  locale: string,
+  features: NumberFormatFeatures
+): { format: (value: number) => string } {
+  const significantDigits = features?.showSignificantDigits ?? undefined;
+  const fractionDigits = features?.maximumFractionDigits ?? undefined;
+  return makeFormatter(
+    locale,
+    significantDigits ??
+      (typeof fractionDigits === 'number' ? undefined : DEFAULT_SIGNIFICANT_DIGITS),
+    fractionDigits
+  );
 }
 
 /**

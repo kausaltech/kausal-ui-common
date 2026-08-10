@@ -1,2 +1,7 @@
-export { formatWithFormatter, makeFormatter } from './numbers';
+export {
+  DEFAULT_SIGNIFICANT_DIGITS,
+  formatWithFormatter,
+  makeFormatter,
+  makeInstanceFormatter,
+} from './numbers';
 export { sanitizeHtmlUnit } from './sanitizeHtmlUnit';

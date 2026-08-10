@@ -174,7 +174,7 @@ function getCommonOptions() {
       }
       return getSentryTraceSampleRate();
     },
-    ignoreErrors: ['NEXT_NOT_FOUND'],
+    ignoreErrors: ['NEXT_NOT_FOUND', 'Failed to find Server Action'],
     debug: envToBool(process.env.SENTRY_DEBUG, false),
   } satisfies Options;
 }
