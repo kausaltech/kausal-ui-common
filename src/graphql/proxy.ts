@@ -8,6 +8,7 @@ import { captureException, startSpan } from '@sentry/nextjs';
 import {
   PATHS_INSTANCE_HOSTNAME_HEADER,
   PATHS_INSTANCE_IDENTIFIER_HEADER,
+  WATCH_PLAN_IDENTIFIER_HEADER,
   WILDCARD_DOMAINS_HEADER,
 } from '@common/constants/headers.mjs';
 import { getPathsGraphQLUrl, getWatchGraphQLUrl } from '@common/env';
@@ -30,6 +31,7 @@ type GraphQLRequestBody = {
 const PASS_HEADERS = [
   PATHS_INSTANCE_IDENTIFIER_HEADER,
   PATHS_INSTANCE_HOSTNAME_HEADER,
+  WATCH_PLAN_IDENTIFIER_HEADER,
   WILDCARD_DOMAINS_HEADER,
   'authorization',
   'x-public-user-token',
