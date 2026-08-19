@@ -1,23 +1,32 @@
+/// <reference path="./echarts-i18n.d.ts" />
 import * as echarts from 'echarts/core';
-
-type LocaleOption = Parameters<typeof echarts.registerLocale>[1];
 
 // The plain `echarts/i18n/lang*` files are UMD modules that only
 // side-effect-register themselves under their own name and export NOTHING —
 // importing them here used to register `undefined` for every alias below,
 // silently falling back to English. The `-obj` variants export the locale
-// object (spread onto the exports object, no `.default`).
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const load = (name: string) => require(`echarts/i18n/${name}-obj`) as LocaleOption;
+// object (their `module.exports`, which ESM interop maps to the default
+// import). Static imports are required so this works under both webpack
+// (Next.js) and Vite (Storybook), where top-level `require()` is unavailable.
+import langCS from 'echarts/i18n/langCS-obj.js';
+import langDE from 'echarts/i18n/langDE-obj.js';
+import langEN from 'echarts/i18n/langEN-obj.js';
+import langES from 'echarts/i18n/langES-obj.js';
+import langFI from 'echarts/i18n/langFI-obj.js';
+import langPL from 'echarts/i18n/langPL-obj.js';
+import langPTBr from 'echarts/i18n/langPT-br-obj.js';
+import langSV from 'echarts/i18n/langSV-obj.js';
 
-const cs = load('langCS');
-const de = load('langDE');
-const en = load('langEN');
-const es = load('langES');
-const fi = load('langFI');
-const pl = load('langPL');
-const ptBr = load('langPT-br');
-const sv = load('langSV');
+type LocaleOption = Parameters<typeof echarts.registerLocale>[1];
+
+const cs = langCS as LocaleOption;
+const de = langDE as LocaleOption;
+const en = langEN as LocaleOption;
+const es = langES as LocaleOption;
+const fi = langFI as LocaleOption;
+const pl = langPL as LocaleOption;
+const ptBr = langPTBr as LocaleOption;
+const sv = langSV as LocaleOption;
 
 const localeStrings: Record<string, LocaleOption> = {
   cs,
