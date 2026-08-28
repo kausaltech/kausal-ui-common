@@ -273,6 +273,7 @@ function getNodeOptions() {
   ];
   return {
     ...getCommonOptions(),
+    includeLocalVariables: true,
     skipOpenTelemetrySetup: true,
     registerEsmLoaderHooks: true,
     spotlight: getSpotlightUrl() || undefined,
