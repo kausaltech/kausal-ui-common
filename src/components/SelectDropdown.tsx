@@ -129,13 +129,13 @@ export default function SelectDropdown(props: SelectDropdownProps) {
           renderOption={(liProps, option, state) =>
             renderOption(liProps, option, state, isHierarchical)
           }
-          renderTags={(tagValues, getTagProps) => {
+          renderValue={(tagValues, getItemProps) => {
             if (tagValues.length === 0) return null;
             const [first, ...rest] = tagValues;
-            const { key, ...tagProps } = getTagProps({ index: 0 });
+            const { key, ...itemProps } = getItemProps({ index: 0 });
             return (
               <>
-                <Chip key={key} label={first.label} size="small" {...tagProps} />
+                <Chip key={key} label={first.label} size="small" {...itemProps} />
                 {rest.length > 0 && (
                   <Typography
                     component="span"

@@ -1,6 +1,5 @@
 /* istanbul ignore file */
 import * as api from '@opentelemetry/api';
-import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import type { ExportResult } from '@opentelemetry/core';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
@@ -11,10 +10,10 @@ import {
 } from '@opentelemetry/sdk-trace-base';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import {
+  SentryAsyncLocalStorageContextManager,
   SentryPropagator,
   SentrySampler,
   SentrySpanProcessor,
-  wrapContextManagerClass,
 } from '@sentry/opentelemetry';
 import type { VercelEdgeClient } from '@sentry/vercel-edge';
 
@@ -65,8 +64,7 @@ export async function initTelemetry(sentryClient: VercelEdgeClient) {
     sampler: traceSampler,
     forceFlushTimeoutMillis: 500,
   });
-  const SentryContextManager = wrapContextManagerClass(AsyncLocalStorageContextManager);
-  api.context.setGlobalContextManager(new SentryContextManager());
+  api.context.setGlobalContextManager(new SentryAsyncLocalStorageContextManager());
   api.trace.setGlobalTracerProvider(provider);
   api.propagation.setGlobalPropagator(propagator);
 }
