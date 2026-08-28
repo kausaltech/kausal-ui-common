@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import  { useMemo } from 'react';
 
 import type { Theme } from '@emotion/react';
 import { Global, css } from '@emotion/react';
@@ -36,9 +36,11 @@ const getGlobalStyles = (theme: Theme) => css`
   }
 
   body {
-    font-family: ${theme.fontFamily !== ''
-      ? `${theme.fontFamily}, ${theme.fontFamilyFallback}`
-      : theme.fontFamilyFallback};
+    font-family: ${
+      theme.fontFamily !== ''
+        ? `${theme.fontFamily}, ${theme.fontFamilyFallback}`
+        : theme.fontFamilyFallback
+    };
     font-size: ${theme.fontSizeBase};
     line-height: ${theme.lineHeightBase};
     text-rendering: optimizeLegibility;
@@ -68,9 +70,11 @@ const getGlobalStyles = (theme: Theme) => css`
   h4,
   h5,
   h6 {
-    font-family: ${theme.fontFamilyHeadings !== ''
-      ? `${theme.fontFamilyHeadings}, ${theme.fontFamilyFallbackHeadings}`
-      : theme.fontFamilyFallbackHeadings};
+    font-family: ${
+      theme.fontFamilyHeadings !== ''
+        ? `${theme.fontFamilyHeadings}, ${theme.fontFamilyFallbackHeadings}`
+        : theme.fontFamilyFallbackHeadings
+    };
     font-weight: ${theme.headingsFontWeight};
     line-height: ${theme.lineHeightMd};
     color: ${theme.headingsColor};
