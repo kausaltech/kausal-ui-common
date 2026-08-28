@@ -1,5 +1,4 @@
 // @ts-check
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
@@ -13,7 +12,6 @@ function tryImportThemePackage(packageNames) {
   const require = createRequire(import.meta.url);
   for (const packageName of packageNames) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return require(packageName);
     } catch (err) {
       if (err instanceof Error && 'code' in err && err.code !== 'MODULE_NOT_FOUND') {
