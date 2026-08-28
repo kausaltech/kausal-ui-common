@@ -11,6 +11,7 @@ import {
 } from 'echarts/charts';
 import {
   AriaComponent,
+  type AriaComponentOption,
   AxisPointerComponent,
   DatasetComponent,
   type DatasetComponentOption,
@@ -91,6 +92,7 @@ export type ECOption = ComposeOption<
   | TooltipComponentOption
   | GridComponentOption
   | DatasetComponentOption
+  | AriaComponentOption
 >;
 
 const DEFAULT_STYLES: ECOption = {
