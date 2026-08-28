@@ -9,5 +9,8 @@ export function initSentryCommon(_client: Client) {
   if (region) {
     scope.setTag('deployment.region', region);
   }
-  scope.setTag('runtime', process.env.NEXT_RUNTIME);
+  scope.setTag(
+    'runtime',
+    typeof window !== 'undefined' ? 'browser' : (process.env.NEXT_RUNTIME ?? 'node')
+  );
 }
