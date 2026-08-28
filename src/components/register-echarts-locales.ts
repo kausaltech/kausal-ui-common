@@ -1,6 +1,5 @@
 /// <reference path="./echarts-i18n.d.ts" />
 import * as echarts from 'echarts/core';
-
 // The plain `echarts/i18n/lang*` files are UMD modules that only
 // side-effect-register themselves under their own name and export NOTHING —
 // importing them here used to register `undefined` for every alias below,
