@@ -18,7 +18,12 @@ const sentryAuthToken = secrets.SENTRY_AUTH_TOKEN || process.env.SENTRY_AUTH_TOK
 
 const sentryDebug = envToBool(process.env.SENTRY_DEBUG, false);
 
-export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
+type SentryConfigOverrides = Pick<SentryBuildOptions, 'sourcemaps'>;
+
+export function wrapWithSentryConfig(
+  configIn: NextConfig,
+  overrides: SentryConfigOverrides = {}
+): NextConfig {
   const require = createRequire(import.meta.url);
   const { withSentryConfig } = require('@sentry/nextjs') as typeof Sentry;
   const uploadEnabled = !!sentryAuthToken;
@@ -61,6 +66,7 @@ export function wrapWithSentryConfig(configIn: NextConfig): NextConfig {
     // Automatically tree-shake Sentry logger statements to reduce bundle size
     sourcemaps: {
       deleteSourcemapsAfterUpload: false,
+      ...overrides.sourcemaps,
     },
     release: {
       create: uploadEnabled,
