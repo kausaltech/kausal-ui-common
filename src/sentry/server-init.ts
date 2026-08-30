@@ -82,12 +82,7 @@ const edgeSpotlightIntegration: IntegrationFn = (options: { url: string }) => {
     }).catch((reason: Error) => {
       nrErrors++;
       const cause = 'cause' in reason ? reason.cause : undefined;
-      let errorMessage = reason.message;
-      if (cause instanceof Error) {
-        errorMessage = cause.message;
-      } else {
-        errorMessage = reason.message;
-      }
+      const errorMessage = cause instanceof Error ? cause.message : reason.message;
       logger.warn(`Error sending envelope to Spotlight: ${errorMessage}`);
       if (nrErrors >= 5) {
         logger.warn('Too many errors sending envelopes to Spotlight, disabling integration');

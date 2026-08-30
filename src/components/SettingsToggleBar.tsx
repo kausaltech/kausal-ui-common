@@ -1,4 +1,3 @@
-
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Container from '@mui/material/Container';
@@ -22,7 +21,13 @@ export function SettingsToggleBar({ title, label, value, onChange, isLoading = f
     <Container disableGutters>
       <Card>
         <CardContent sx={{ px: 2, py: 0.5, '&:last-child': { pb: 0.5 } }}>
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+            }}
+          >
             <Typography variant="h5">{title}</Typography>
             <FormControlLabel
               control={<Switch checked={value} onChange={() => onChange(!value)} />}

@@ -540,9 +540,7 @@ export default function NodeGraph(props: NodeGraphProps) {
     tooltip: {
       trigger: 'axis',
       position: function (point, params, dom, rect, size) {
-        return point[0] < size.viewSize[0] / 2
-          ? { top: 60, right: 5 }
-          : { top: 60, left: 5 };
+        return point[0] < size.viewSize[0] / 2 ? { top: 60, right: 5 } : { top: 60, left: 5 };
       } as TooltipPositionCallback,
       confine: true,
       formatter: createTooltipFormatter(),

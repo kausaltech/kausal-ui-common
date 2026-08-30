@@ -7,7 +7,7 @@ type LocaleOption = Parameters<typeof echarts.registerLocale>[1];
 // importing them here used to register `undefined` for every alias below,
 // silently falling back to English. The `-obj` variants export the locale
 // object (spread onto the exports object, no `.default`).
- 
+
 const load = (name: string) => require(`echarts/i18n/${name}-obj`) as LocaleOption;
 
 const cs = load('langCS');

@@ -22,9 +22,7 @@ export function makeFormatter(
   // spec raised the ceiling to 100, but older engines still enforce 20 and throw a
   // RangeError for anything higher (Sentry WATCH-UI-7MP).
   const fracDigits =
-    fractionDigits !== undefined && fractionDigits >= 0
-      ? Math.min(fractionDigits, 20)
-      : undefined;
+    fractionDigits !== undefined && fractionDigits >= 0 ? Math.min(fractionDigits, 20) : undefined;
   if (typeof sigDigits === 'number' && typeof fracDigits === 'number') {
     // Significant digits wins for rounding; fraction digits caps the display.
     const fracFormatter = new Intl.NumberFormat(locale, { maximumFractionDigits: fracDigits });
