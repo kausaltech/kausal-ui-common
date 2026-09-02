@@ -42,7 +42,6 @@ export function initializeThemes(rootDir) {
       console.log('Private themes not found; using public themes');
       const {
         generateThemeSymlinks: generateThemeSymlinksPublic,
-        // @ts-expect-error
       } = require('@kausal/themes/setup.cjs');
       generateThemeSymlinksPublic(destPath, { verbose: false });
     }
