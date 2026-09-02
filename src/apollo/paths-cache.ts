@@ -12,6 +12,8 @@ type PathsScenario = {
 // Extends InstanceGoalInput with fields added by PathsProvider augmentation
 export type PathsGoal = InstanceGoalInput & {
   separateYears: number[] | null;
+  defaultOutcomeGraphType?: 'area' | 'line' | 'bar' | null;
+  colorAdjust?: number | null;
 };
 
 export const yearRangeVar = makeVar<[number, number]>(null!);

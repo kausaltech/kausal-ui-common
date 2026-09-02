@@ -1,5 +1,15 @@
 import { type DimensionalNodeMetricFragment, ScenarioKind } from '@/common/__generated__/graphql';
-import type { SiteContextScenario, SiteContextType } from '@/context/site';
+
+type SiteContextScenario = {
+  id: string;
+  kind: string;
+  actualHistoricalYears?: number[] | null;
+};
+
+type SiteContextType = {
+  scenarios: SiteContextScenario[];
+  minYear: number;
+};
 
 type Metric = NonNullable<DimensionalNodeMetricFragment['metricDim']>;
 

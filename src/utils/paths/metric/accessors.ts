@@ -79,9 +79,10 @@ export function isForecastYear(metric: ParsedMetric, year: number): boolean {
  * Forecast values take precedence over historical values.
  */
 export function getMetricValue(
-  node: { metric: NodeMetricInput },
+  node: { metric: NodeMetricInput | null },
   year: number
 ): number | undefined {
+  if (!node.metric) return undefined;
   return (
     node.metric.forecastValues.find((dp) => dp.year === year)?.value ??
     node.metric.historicalValues.find((dp) => dp.year === year)?.value
