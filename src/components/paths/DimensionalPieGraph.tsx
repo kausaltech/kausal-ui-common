@@ -38,8 +38,7 @@ const Subplot = styled.div`
 
 // Outer radius (percent of half the chart's smaller dimension) of the pie
 // with the largest total; the others scale so that pie AREA is proportional
-// to the total (radius ∝ √ratio) — perceptually honest, unlike the old
-// Plotly domain math that saturated at full size for ratios above ~0.53.
+// to the total (radius ∝ √ratio)
 const MAX_OUTER_RADIUS = 65;
 // Donut hole, as a fraction of the outer radius
 const HOLE_RATIO = 0.5;
@@ -151,8 +150,7 @@ const DimensionalPieGraph = ({
         ...slice,
         name: `${labels[idx]}, ${formatNumber((slice.value / total) * 100)}%`,
       }));
-      // Largest slice first, like Plotly's default `sort: true`; combined with
-      // the counterclockwise layout below this also orders the legend by size.
+      // Largest slice first
       namedSlices.sort((a, b) => b.value - a.value);
 
       return {
@@ -194,8 +192,6 @@ const DimensionalPieGraph = ({
             type: 'pie',
             radius: [`${outerRadius * HOLE_RATIO}%`, `${outerRadius}%`],
             center: ['50%', '50%'],
-            // Draw counterclockwise starting from 6 o'clock, matching the old
-            // Plotly rendering
             startAngle: 270,
             clockwise: false,
             label: { show: false },
