@@ -9,13 +9,7 @@ const isServer = typeof window === 'undefined';
 const isLocalDev = process.env.NODE_ENV === 'development';
 
 export type DeploymentType =
-  | 'production'
-  | 'staging'
-  | 'development'
-  | 'testing'
-  | 'preview'
-  | 'ci'
-  | 'wip';
+  'production' | 'staging' | 'development' | 'testing' | 'preview' | 'ci' | 'wip';
 
 const KNOWN_DEPLOYMENT_TYPES = [
   'production',

@@ -14,10 +14,14 @@ export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
       time: new Date(time).toISOString(),
       ...rest,
     };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method
-    const logFunc = console[level] || console.log;
+    const logFunc = (message: string) => {
+      if (level === 'fatal') {
+        console.error(message);
+      } else {
+        console[level](message);
+      }
+    };
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       logFunc(JSON.stringify(rec));
     } catch (err) {
       if (err instanceof Error) {

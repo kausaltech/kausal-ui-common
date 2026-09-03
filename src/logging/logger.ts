@@ -9,12 +9,10 @@ import { REQUEST_CORRELATION_ID_HEADER } from '../constants/headers.mjs';
 import { getKubernetesLogging } from '../env/runtime.ts';
 
 export function getRootLogger() {
-  // @ts-expect-error - globalThis is not typed
   return globalThis['__kausal_root_logger__'] as Logger | undefined;
 }
 
 export function setRootLogger(logger: Logger) {
-  // @ts-expect-error - globalThis is not typed
   globalThis['__kausal_root_logger__'] = logger;
 }
 
@@ -144,7 +142,6 @@ export function getLogger(
     }
     const logger = parent.child(allBindings);
     if (opts.noSpan) {
-      // @ts-expect-error - logger['noSpan'] is not typed
       logger['noSpan'] = true;
     }
     return logger;

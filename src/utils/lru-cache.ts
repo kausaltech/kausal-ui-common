@@ -23,8 +23,7 @@ export interface ConstOptions<K, V> {
   ttlInterval?: number;
   /** Upsert callback: enables to create missing elements */
   upsert?:
-    | ((key: K, additionalArgs?: any[]) => UpsertResult<V> | Promise<UpsertResult<V>>)
-    | undefined;
+    ((key: K, additionalArgs?: any[]) => UpsertResult<V> | Promise<UpsertResult<V>>) | undefined;
   /** onEvict callback: enables to handle element eviction */
   onEvict: (metadata: Metadata<K, V>) => void;
 }

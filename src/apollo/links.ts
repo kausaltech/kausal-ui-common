@@ -18,7 +18,7 @@ import { logApolloError } from '@common/logging/apollo';
 
 import type { DefaultApolloContext } from '.';
 
-if (globalThis.__DEV__) {
+if (isLocalDev) {
   // Adds messages only in a dev environment
   loadDevMessages();
   loadErrorMessages();

@@ -540,9 +540,7 @@ export default function NodeGraph(props: NodeGraphProps) {
     tooltip: {
       trigger: 'axis',
       position: function (point, params, dom, rect, size) {
-        const obj = { top: 60 };
-        obj[['left', 'right'][+(point[0] < size.viewSize[0] / 2)]] = 5;
-        return obj;
+        return point[0] < size.viewSize[0] / 2 ? { top: 60, right: 5 } : { top: 60, left: 5 };
       } as TooltipPositionCallback,
       confine: true,
       formatter: createTooltipFormatter(),
@@ -748,7 +746,9 @@ function createMainSeries(
           // This is pretty complex due to typing
           const xIndex = param.encode?.x?.[0];
           const rawYear: unknown =
-            typeof xIndex === 'number' ? (param.data as unknown)?.[xIndex] : undefined;
+            typeof xIndex === 'number' && Array.isArray(param.data)
+              ? param.data[xIndex]
+              : undefined;
           const dataYear: number | undefined = typeof rawYear === 'number' ? rawYear : undefined;
           return isForecastYear(dataYear) ? tint(FORECAST_TINT_AMOUNT, baseColor) : baseColor;
         },
@@ -1022,8 +1022,9 @@ function buildTooltipRow(
   showTotalLine?: boolean
 ) {
   const yIndex: number | undefined = param?.encode?.y?.[0];
-  if (!yIndex || !param.data) return '';
-  const rawValue: number = param.data[yIndex] as number;
+  if (yIndex == null || !Array.isArray(param.data)) return '';
+  const rawValue = param.data[yIndex];
+  if (typeof rawValue !== 'number') return '';
   const value = formatValue(rawValue);
 
   if (value === '-' || value === undefined || value === null) return '';

@@ -1,4 +1,4 @@
-import * as cookie from 'cookie';
+import { parseCookie, stringifySetCookie } from 'cookie';
 import setCookie from 'set-cookie-parser';
 
 import { getProductId } from '@common/env/static';
@@ -18,7 +18,7 @@ export function getApiCookies(headers: Headers, apiType?: APIType) {
     return [];
   }
   const backendCookies: string[] = [];
-  const cookies = cookie.parse(reqCookieHeader);
+  const cookies = parseCookie(reqCookieHeader);
   const prefix = getCookiePrefix(apiType);
   Object.entries(cookies).forEach(([name, value]) => {
     if (!name.startsWith(prefix)) return;
@@ -36,7 +36,9 @@ export function getClientCookiesFromBackendResponse(
   const cookies = setCookie.parse(backendResponse.headers.getSetCookie());
   const prefix = getCookiePrefix(apiType);
   return cookies.map((ck) => {
-    return cookie.serialize(`${prefix}${ck.name}`, ck.value, {
+    return stringifySetCookie({
+      name: `${prefix}${ck.name}`,
+      value: ck.value,
       expires: ck.expires,
       maxAge: ck.maxAge,
       httpOnly: ck.httpOnly,

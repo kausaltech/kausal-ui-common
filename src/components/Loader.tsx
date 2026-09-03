@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { transparentize } from 'polished';
 
 import styled from '@common/themes/styled';

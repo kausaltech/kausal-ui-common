@@ -407,34 +407,40 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
         root: {
           borderRadius: theme.cardBorderRadius,
           border: `${theme.cardBorderWidth} solid ${theme.graphColors.grey020}`,
-        },
-        standardSuccess: {
-          backgroundColor: theme.graphColors.green010,
-          color: theme.graphColors.green090,
-          '& .MuiAlert-icon': {
-            color: theme.graphColors.green070,
-          },
-        },
-        standardError: {
-          backgroundColor: theme.graphColors.red010,
-          color: theme.graphColors.red090,
-          '& .MuiAlert-icon': {
-            color: theme.graphColors.red070,
-          },
-        },
-        standardWarning: {
-          backgroundColor: theme.graphColors.yellow010,
-          color: theme.graphColors.yellow090,
-          '& .MuiAlert-icon': {
-            color: theme.graphColors.yellow070,
-          },
-        },
-        standardInfo: {
-          backgroundColor: theme.graphColors.blue010,
-          color: theme.graphColors.blue090,
-          '& .MuiAlert-icon': {
-            color: theme.graphColors.blue070,
-          },
+          variants: [
+            {
+              props: { variant: 'standard', color: 'success' },
+              style: {
+                backgroundColor: theme.graphColors.green010,
+                color: theme.graphColors.green090,
+                '& .MuiAlert-icon': { color: theme.graphColors.green070 },
+              },
+            },
+            {
+              props: { variant: 'standard', color: 'error' },
+              style: {
+                backgroundColor: theme.graphColors.red010,
+                color: theme.graphColors.red090,
+                '& .MuiAlert-icon': { color: theme.graphColors.red070 },
+              },
+            },
+            {
+              props: { variant: 'standard', color: 'warning' },
+              style: {
+                backgroundColor: theme.graphColors.yellow010,
+                color: theme.graphColors.yellow090,
+                '& .MuiAlert-icon': { color: theme.graphColors.yellow070 },
+              },
+            },
+            {
+              props: { variant: 'standard', color: 'info' },
+              style: {
+                backgroundColor: theme.graphColors.blue010,
+                color: theme.graphColors.blue090,
+                '& .MuiAlert-icon': { color: theme.graphColors.blue070 },
+              },
+            },
+          ],
         },
       },
     },
