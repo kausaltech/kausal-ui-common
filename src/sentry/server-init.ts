@@ -7,6 +7,7 @@ import type {
   BaseTransportOptions,
   Client,
   Envelope,
+  Integration,
   IntegrationFn,
   Options,
   SamplingContext,
@@ -259,21 +260,36 @@ export function getHttpInstrumentationOptions(): HttpInstrumentationConfig {
   return options;
 }
 
-function getNodeOptions() {
+function getNodeOptions(profilingIntegration?: Integration) {
   // We require() the Sentry module here to avoid an edge runtime build error.
   const SentryModule = require('@sentry/nextjs') as typeof Sentry;
+  const httpOptions = getHttpInstrumentationOptions();
   const customizedIntegrations = [
-    SentryModule.httpIntegration({ spans: false }),
+    SentryModule.httpIntegration({ spans: false, instrumentation: {
+      requestHook: httpOptions.requestHook
+    }}),
     SentryModule.nativeNodeFetchIntegration(getNodeFetchIntegrationOptions()),
   ];
+  let profileConfig: Partial<NodeOptions> = {};
+  if (profilingIntegration) {
+    profileConfig = {
+      profileSessionSampleRate: 1.0,
+      profileLifecycle: 'trace',
+    };
+    console.log('Enabling profiling');
+  }
   return {
     ...getCommonOptions(),
-    includeLocalVariables: true,
+    ...profileConfig,
     skipOpenTelemetrySetup: true,
+    includeLocalVariables: true,
     registerEsmLoaderHooks: true,
+    dataCollection: {
+      userInfo: true,
+    },
     spotlight: getSpotlightUrl() || undefined,
     integrations: (integrations) => {
-      const filtered = integrations
+      const integrationsOut = integrations
         .filter((integration) => {
           if (['Graphql', 'Http', 'NodeFetch'].includes(integration.name)) {
             return false;
@@ -281,7 +297,10 @@ function getNodeOptions() {
           return true;
         })
         .concat(customizedIntegrations);
-      return filtered;
+      if (profilingIntegration) {
+        integrationsOut.push(profilingIntegration);
+      }
+      return integrationsOut;
     },
   } satisfies NodeOptions;
 }
@@ -310,17 +329,12 @@ function getEdgeOptions() {
 }
 
 // eslint-disable-next-line @typescript-eslint/require-await
-export async function initSentry(): Promise<Client | undefined> {
-  // Sentry requires a global.next object to be present, but it's not always there.
-  if (!('next' in globalThis)) {
-    globalThis.next = {
-      version: '16.2.0',
-    };
-  }
+export async function initSentry(profilingIntegration?: Integration): Promise<Client | undefined> {
   if (process.env.NEXT_RUNTIME === 'edge') {
     Sentry.init(getEdgeOptions());
   } else {
-    Sentry.init(getNodeOptions());
+    const nodeOpts = getNodeOptions(profilingIntegration);
+    Sentry.init(nodeOpts);
   }
   logger = getLogger('sentry');
 

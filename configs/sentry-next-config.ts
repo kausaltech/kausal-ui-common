@@ -1,7 +1,5 @@
-import { createRequire } from 'node:module';
-
-import type * as Sentry from '@sentry/nextjs';
 import type { SentryBuildOptions } from '@sentry/nextjs';
+import { withSentryConfig } from '@sentry/nextjs/config';
 import { secrets } from 'docker-secret';
 import type { NextConfig } from 'next';
 
@@ -24,8 +22,6 @@ export function wrapWithSentryConfig(
   configIn: NextConfig,
   overrides: SentryConfigOverrides = {}
 ): NextConfig {
-  const require = createRequire(import.meta.url);
-  const { withSentryConfig } = require('@sentry/nextjs') as typeof Sentry;
   const uploadEnabled = !!sentryAuthToken;
 
   const sentryConfig: SentryBuildOptions = {
@@ -44,6 +40,7 @@ export function wrapWithSentryConfig(
     bundleSizeOptimizations: {
       excludeDebugStatements: !sentryDebug,
       excludeReplayIframe: true,
+      excludeTracing: false,
     },
     webpack: {
       reactComponentAnnotation: {

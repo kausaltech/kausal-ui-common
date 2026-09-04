@@ -108,7 +108,11 @@ export function getNextConfig(projectRoot: string): NextConfig {
         '@/*': './src/*',
         fs: 'node:fs',
         path: 'node:path',
+        '@sentry/node-cpu-profiler': {
+          browser: '',
+        },
       },
+      debugIds: true,
     },
     webpack: (cfg: Webpack.Configuration, context) => {
       const { isServer, dev, nextRuntime } = context;

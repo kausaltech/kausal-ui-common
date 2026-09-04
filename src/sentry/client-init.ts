@@ -21,7 +21,7 @@ import { getLogger } from '@common/logging/logger';
 
 import { initSentryCommon } from './common-init';
 
-function makeNullTransport(_options: BaseTransportOptions) {
+function _makeNullTransport(_options: BaseTransportOptions) {
   return Sentry.createTransport(
     {
       recordDroppedEvent: () => {},
@@ -81,7 +81,7 @@ export function initSentryBrowser() {
     debug: envToBool(process.env.SENTRY_DEBUG, false),
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: getSentryReplaysSampleRate(),
-    transport: envDsn ? undefined : makeNullTransport,
+    //transport: envDsn ? undefined : makeNullTransport,
     integrations(integrations) {
       integrations = integrations.filter(
         (integration) =>
@@ -126,8 +126,12 @@ export function initSentryBrowser() {
         );
       }
       if (spotlightUrl) {
-        console.log(`🔦 Initializing Spotlight; streaming events to ${spotlightUrl}`);
-        integrations.push(Sentry.spotlightBrowserIntegration({ sidecarUrl: spotlightUrl }));
+        console.log(`🔦 Initializing Spotlight; tunneling events to ${spotlightUrl}`);
+        if (!envDsn) {
+          integrations.push(
+            Sentry.spotlightBrowserIntegration({ sidecarUrl: API_SENTRY_TUNNEL_PATH })
+          );
+        }
       }
       return integrations;
     },
@@ -156,21 +160,4 @@ export function initSentryBrowser() {
     });
   }
   initSentryCommon(client);
-  /*
-  if (false &&enableSpotlight) {
-    initSpotlight = () => {
-      import('@spotlightjs/spotlight')
-        .then((Spotlight) => {
-          void Spotlight.init({
-            sidecarUrl: `${spotlightUrl}/stream`,
-          });
-        })
-        .catch((err) => {
-          console.error('Failed to initialize Spotlight', err);
-        });
-    };
-  } else {
-    initSpotlight = () => void 0;
-  }
-  */
 }

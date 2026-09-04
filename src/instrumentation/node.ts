@@ -5,6 +5,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { type ReadableSpan, type SpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+import type { Integration } from '@sentry/core';
 import * as Sentry from '@sentry/node';
 import type { NodeClient } from '@sentry/node';
 import { SentryPropagator, SentrySampler, SentrySpanProcessor } from '@sentry/opentelemetry';
@@ -133,15 +134,18 @@ export async function initMetrics() {
 export async function initAll(productName: string) {
   printRuntimeConfig(productName);
   const spotlightUrl = getSpotlightViewUrl();
-  const nodeOtel = await import('@common/instrumentation/node');
-  nodeOtel.initNodeLogging();
+  let nodeProfilingIntegration: Integration | undefined;
+  if (envToBool(process.env.SENTRY_PROFILING, false)) {
+    nodeProfilingIntegration = (await import('@sentry/profiling-node')).nodeProfilingIntegration();
+  }
+  initNodeLogging();
   const logger = getLogger('init');
-  const sentryClient = await initSentry();
+  const sentryClient = await initSentry(nodeProfilingIntegration);
   if (spotlightUrl && sentryClient) {
     logger.info(
       { release: sentryClient.getOptions().release },
       `🔦 Sentry Spotlight enabled at: ${spotlightUrl}`
     );
   }
-  await nodeOtel.initTelemetry(sentryClient as NodeClient);
+  await initTelemetry(sentryClient as NodeClient);
 }
