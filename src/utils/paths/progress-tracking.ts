@@ -2,7 +2,7 @@ import { type DimensionalNodeMetricFragment, ScenarioKind } from '@/common/__gen
 
 type SiteContextScenario = {
   id: string;
-  kind: string;
+  kind: ScenarioKind;
   actualHistoricalYears?: number[] | null;
 };
 

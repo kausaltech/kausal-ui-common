@@ -88,7 +88,7 @@ const DimensionalPieGraph = ({
   const formatNumber = useMemo(() => {
     const formatter = makeInstanceFormatter(locale, instance.features);
     return (value: number) => formatWithFormatter(formatter, value);
-  }, [locale, instance.features?.showSignificantDigits, instance.features?.maximumFractionDigits]);
+  }, [locale, instance.features]);
   const theme = useTheme();
   const activeGoal = useReactiveVar(activeGoalVar);
   // The metric may include a scenario dimension (queried `withScenarios`);
@@ -112,8 +112,9 @@ const DimensionalPieGraph = ({
     if (!activeGoal) return;
     const newDefault = getDefaultSliceConfig(parsedMetric, activeGoal);
     if (!newDefault || isEqual(sliceConfig, newDefault)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSliceConfig(newDefault);
-  }, [activeGoal, parsedMetric]);
+  }, [activeGoal, parsedMetric, sliceConfig]);
 
   const yearData = useMemo(
     () => getSingleYear(parsedMetric, endYear, sliceConfig.categories),

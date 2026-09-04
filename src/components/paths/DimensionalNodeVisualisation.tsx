@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Box } from '@mui/material';
 
 import { useReactiveVar } from '@apollo/client/react';
-import type { DimensionalNodeMetricFragment } from '@generated/paths/graphql';
+import type { DimensionalNodeMetricFragment, ScenarioKind } from '@generated/paths/graphql';
 import chroma from 'chroma-js';
 import { useLocale } from 'next-intl';
 
@@ -52,7 +52,7 @@ type InstanceContext = {
 
 type SiteScenario = {
   id: string;
-  kind: string;
+  kind: ScenarioKind;
   actualHistoricalYears?: number[] | null;
 };
 
@@ -105,7 +105,7 @@ export default function DimensionalNodeVisualisation({
   const formatValue = useMemo(() => {
     const formatter = makeInstanceFormatter(locale, instance.features);
     return (value: number) => formatWithFormatter(formatter, value);
-  }, [locale, instance.features?.showSignificantDigits, instance.features?.maximumFractionDigits]);
+  }, [locale, instance.features]);
   const scenarios = site?.scenarios ?? [];
   const hasProgressTracking = metricHasProgressTrackingScenario(metric, scenarios);
 
@@ -124,6 +124,7 @@ export default function DimensionalNodeVisualisation({
      */
     if (!activeGoal) return;
     const newDefault = getDefaultSliceConfig(parsedMetric, activeGoal);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSliceConfig(newDefault);
   }, [activeGoal, parsedMetric]);
 
@@ -187,6 +188,7 @@ export default function DimensionalNodeVisualisation({
     baselineForecast && site?.baselineName && instance.features?.baselineVisibleInGraphs;
 
   // Define current year setup
+  // eslint-disable-next-line prefer-const
   let { filteredYears, yearIndices, referenceYear, visibleForecastRange } = getFilteredYears(
     slice,
     instance,

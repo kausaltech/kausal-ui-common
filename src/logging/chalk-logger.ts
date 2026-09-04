@@ -3,7 +3,7 @@ import type { ChalkInstance } from 'chalk';
 import type * as chalkModule from 'chalk';
 import dayjs from 'dayjs';
 import stringify from 'fast-safe-stringify';
-import type { Level, LoggerOptions, WriteFn } from 'pino';
+import type { Level, LoggerOptions } from 'pino';
 
 import type { LogRecord } from './logger';
 
@@ -162,7 +162,7 @@ export function setupBrowserLogging(options: LoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write: write as WriteFn,
+    write,
   };
 }
 
@@ -186,6 +186,6 @@ export function setupEdgeLogging(options: LoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write: write as WriteFn,
+    write,
   };
 }

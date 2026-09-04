@@ -290,13 +290,16 @@ export function getSingleYear(
   );
 
   // Get all used dimensions and their categories/groups
-  const categoryTypes = metric.dimensions.map((dim) => ({
-    id: dim.id,
-    type: (dim.groups.length ? 'group' : 'category') as 'group' | 'category',
-    options: dim.groups.length
-      ? [...new Set(yearRows.map((row) => row.dimCats[dim.id].group!))]
-      : [...new Set(yearRows.map((row) => row.dimCats[dim.id].id))],
-  }));
+  const categoryTypes = metric.dimensions.map((dim) => {
+    const type: 'group' | 'category' = dim.groups.length ? 'group' : 'category';
+    return {
+      id: dim.id,
+      type,
+      options: dim.groups.length
+        ? [...new Set(yearRows.map((row) => row.dimCats[dim.id].group!))]
+        : [...new Set(yearRows.map((row) => row.dimCats[dim.id].id))],
+    };
+  });
 
   // Build the data matrix
   const rows =

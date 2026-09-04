@@ -265,9 +265,12 @@ function getNodeOptions(profilingIntegration?: Integration) {
   const SentryModule = require('@sentry/nextjs') as typeof Sentry;
   const httpOptions = getHttpInstrumentationOptions();
   const customizedIntegrations = [
-    SentryModule.httpIntegration({ spans: false, instrumentation: {
-      requestHook: httpOptions.requestHook
-    }}),
+    SentryModule.httpIntegration({
+      spans: false,
+      instrumentation: {
+        requestHook: httpOptions.requestHook,
+      },
+    }),
     SentryModule.nativeNodeFetchIntegration(getNodeFetchIntegrationOptions()),
   ];
   let profileConfig: Partial<NodeOptions> = {};

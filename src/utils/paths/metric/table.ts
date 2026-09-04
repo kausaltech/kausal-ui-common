@@ -49,13 +49,13 @@ export function createTable(
 
     slice.categoryValues.forEach((cv) => {
       if (historicalYearIndex >= 0) {
-        const value = cv.historicalValues[historicalYearIndex] || null;
+        const value = cv.historicalValues[historicalYearIndex] ?? null;
         row[cv.category.id] = value !== null ? parseFloat(value?.toPrecision(2) || '') : NO_VALUE;
-        total += value || 0;
+        total += value ?? 0;
       } else if (forecastYearIndex >= 0) {
-        const value = cv.forecastValues[forecastYearIndex] || null;
+        const value = cv.forecastValues[forecastYearIndex] ?? null;
         row[cv.category.id] = value !== null ? parseFloat(value?.toPrecision(2) || '') : NO_VALUE;
-        total += value || 0;
+        total += value ?? 0;
       } else {
         row[cv.category.id] = NO_VALUE;
       }

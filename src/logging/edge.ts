@@ -1,5 +1,5 @@
 /* istanbul ignore file */
-import type { LoggerOptions as PinoLoggerOptions, WriteFn } from 'pino';
+import type { LoggerOptions as PinoLoggerOptions } from 'pino';
 import { pino } from 'pino';
 
 import type * as ChalkLogger from './chalk-logger';
@@ -36,7 +36,7 @@ export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write: write as WriteFn,
+    write,
   };
 }
 

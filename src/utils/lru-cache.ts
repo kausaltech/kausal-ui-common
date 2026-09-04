@@ -165,7 +165,8 @@ export default class LRUCache<K, V> implements NodeChain {
     // reload cleaner
     if (this._ttlP) {
       clearInterval(this._ttlP);
-      const interv = setInterval(this._ttlClean.bind(this), this._ttlInterval);
+      const cb = this._ttlClean.bind(this) as typeof this._ttlClean;
+      const interv = setInterval(cb, this._ttlInterval);
       this._ttlP = interv;
       interv.unref?.();
     }
@@ -256,7 +257,8 @@ export default class LRUCache<K, V> implements NodeChain {
         this._delete(this._prev as Node<K, V>);
       }
       // Run TTL
-      this._ttlP ??= setInterval(this._ttlClean.bind(this), this._ttlInterval);
+      const cb = this._ttlClean.bind(this) as typeof this._ttlClean;
+      this._ttlP ??= setInterval(cb, this._ttlInterval);
     }
     return ele;
   }
