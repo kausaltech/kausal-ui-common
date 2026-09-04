@@ -50,7 +50,7 @@ export function initSentryBrowser() {
   logger = getLogger('sentry');
 
   const spotlightUrl = getSpotlightUrl();
-  const tracePropagationTargets: BrowserOptions['tracePropagationTargets'] = [/\/.*/];
+  const tracePropagationTargets: BrowserOptions['tracePropagationTargets'] = [/^\/.*/];
   if (getWatchBackendUrl()) {
     tracePropagationTargets.push(getWatchBackendUrl());
   }
