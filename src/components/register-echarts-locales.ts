@@ -1,23 +1,23 @@
 import * as echarts from 'echarts/core';
-
-type LocaleOption = Parameters<typeof echarts.registerLocale>[1];
-
 // The plain `echarts/i18n/lang*` files are UMD modules that only
 // side-effect-register themselves under their own name and export NOTHING —
 // importing them here used to register `undefined` for every alias below,
-// silently falling back to English. The `-obj` variants export the locale
-// object (spread onto the exports object, no `.default`).
+// silently falling back to English. The `-obj` variants spread the locale
+// object onto `exports`, so the CommonJS default import is the locale itself.
+//
+// These have to be static imports: a `require()` here resolved fine under
+// webpack but threw `require is not defined` under any ESM-native loader,
+// which broke the Vite-based Storybook/Vitest run.
+import cs from 'echarts/i18n/langCS-obj.js';
+import de from 'echarts/i18n/langDE-obj.js';
+import en from 'echarts/i18n/langEN-obj.js';
+import es from 'echarts/i18n/langES-obj.js';
+import fi from 'echarts/i18n/langFI-obj.js';
+import pl from 'echarts/i18n/langPL-obj.js';
+import ptBr from 'echarts/i18n/langPT-br-obj.js';
+import sv from 'echarts/i18n/langSV-obj.js';
 
-const load = (name: string) => require(`echarts/i18n/${name}-obj`) as LocaleOption;
-
-const cs = load('langCS');
-const de = load('langDE');
-const en = load('langEN');
-const es = load('langES');
-const fi = load('langFI');
-const pl = load('langPL');
-const ptBr = load('langPT-br');
-const sv = load('langSV');
+type LocaleOption = Parameters<typeof echarts.registerLocale>[1];
 
 const localeStrings: Record<string, LocaleOption> = {
   cs,
