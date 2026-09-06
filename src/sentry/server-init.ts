@@ -285,7 +285,6 @@ function getNodeOptions(profilingIntegration?: Integration) {
     ...getCommonOptions(),
     ...profileConfig,
     skipOpenTelemetrySetup: true,
-    includeLocalVariables: true,
     registerEsmLoaderHooks: true,
     dataCollection: {
       userInfo: true,
