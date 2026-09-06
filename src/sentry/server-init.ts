@@ -198,8 +198,71 @@ function getNodeFetchIntegrationOptions(): NodeFetchOptions {
 
 const otelDebug = envToBool(process.env.OTEL_DEBUG, false);
 
+let httpInstrumentationLogger: Logger | undefined;
+
+/** Lazily created and memoised: the hooks below run on every request. */
+function getHttpInstrumentationLogger() {
+  httpInstrumentationLogger ??= getLogger('http-instrumentation', { noSpan: true });
+  return httpInstrumentationLogger;
+}
+
+type RequestHeaders = Record<string, string | string[] | number | undefined>;
+
+function getRequestHeaders(request: object): RequestHeaders | undefined {
+  if (!('headers' in request)) {
+    // Outgoing client requests carry their headers behind getHeader()/setHeader().
+    return undefined;
+  }
+  const { headers } = request;
+  if (!headers || typeof headers !== 'object') {
+    return undefined;
+  }
+  return headers as RequestHeaders;
+}
+
+/**
+ * Injects the active trace context into an outgoing request's headers.
+ *
+ * The `request` parameter is deliberately typed as bare `object`: this hook is
+ * handed both to `@opentelemetry/instrumentation-http` (which describes the
+ * request as `IncomingMessage | ClientRequest`) and to Sentry's
+ * `httpIntegration` (which uses its own portable `HttpIncomingMessage |
+ * HttpClientRequest`). Those descriptions are nominally unrelated, so only a
+ * supertype of both keeps the hook assignable to either under
+ * `strictFunctionTypes`.
+ */
+function injectPropagationHeaders(_span: Span, request: object) {
+  const logger = getHttpInstrumentationLogger();
+  const headers = getRequestHeaders(request);
+  if (!headers) {
+    return;
+  }
+  const existingPropagationHeaders = propagation
+    .fields()
+    .filter((header) => header.toLowerCase() in headers)
+    .map((header) => [header, headers[header.toLowerCase()]]);
+  if (existingPropagationHeaders.length > 0) {
+    if (otelDebug) {
+      logger.info(
+        { ...Object.fromEntries(existingPropagationHeaders) },
+        'propagation headers already present, skipping'
+      );
+    }
+    return;
+  }
+  if (otelDebug) {
+    const span = trace.getSpan(context.active());
+    const spanContext = span?.spanContext();
+    logger.info(
+      { 'trace-id': spanContext?.traceId, 'span-id': spanContext?.spanId },
+      'injecting propagation headers'
+    );
+  }
+  propagation.inject(context.active(), headers);
+}
+
 export function getHttpInstrumentationOptions(): HttpInstrumentationConfig {
-  const logger = getLogger('http-instrumentation', { noSpan: true });
+  const logger = getHttpInstrumentationLogger();
   const options: HttpInstrumentationConfig = {
     ignoreIncomingRequestHook(request) {
       const urlPath = request.url;
@@ -228,34 +291,7 @@ export function getHttpInstrumentationOptions(): HttpInstrumentationConfig {
       }
       return false;
     },
-    requestHook: (span: Span, request) => {
-      if (!('headers' in request)) {
-        return;
-      }
-      const { headers } = request;
-      const existingPropagationHeaders = propagation
-        .fields()
-        .filter((header) => header.toLowerCase() in headers)
-        .map((header) => [header, headers[header.toLowerCase()]]);
-      if (existingPropagationHeaders.length > 0) {
-        if (otelDebug) {
-          logger.info(
-            { ...Object.fromEntries(existingPropagationHeaders) },
-            'propagation headers already present, skipping'
-          );
-        }
-        return;
-      }
-      if (otelDebug) {
-        const span = trace.getSpan(context.active());
-        const spanContext = span?.spanContext();
-        logger.info(
-          { 'trace-id': spanContext?.traceId, 'span-id': spanContext?.spanId },
-          'injecting propagation headers'
-        );
-      }
-      propagation.inject(context.active(), headers);
-    },
+    requestHook: injectPropagationHeaders,
   };
   return options;
 }
@@ -263,12 +299,14 @@ export function getHttpInstrumentationOptions(): HttpInstrumentationConfig {
 function getNodeOptions(profilingIntegration?: Integration) {
   // We require() the Sentry module here to avoid an edge runtime build error.
   const SentryModule = require('@sentry/nextjs') as typeof Sentry;
-  const httpOptions = getHttpInstrumentationOptions();
   const customizedIntegrations = [
     SentryModule.httpIntegration({
       spans: false,
       instrumentation: {
-        requestHook: httpOptions.requestHook,
+        // Passed directly rather than via getHttpInstrumentationOptions(),
+        // whose type widens the hook to the otel-specific signature that
+        // Sentry's own request types don't accept.
+        requestHook: injectPropagationHeaders,
       },
     }),
     SentryModule.nativeNodeFetchIntegration(getNodeFetchIntegrationOptions()),

@@ -4,6 +4,8 @@ import type { Logger, LoggerOptions as PinoLoggerOptions } from 'pino';
 
 import { isLocalDev } from '@common/env';
 
+import type { LoggerWithNoSpan } from './logger';
+
 export const LOGGER_TRACE_ID = 'trace-id';
 export const LOGGER_SPAN_ID = 'span-id';
 
@@ -38,7 +40,7 @@ export function getTraceLogBindings() {
 
 function addDynamicGlobalAttributes(_mergeObject: object, _level: number, logger: Logger) {
   const attrs = {
-    ...(!logger['noSpan'] ? getTraceLogBindings() : {}),
+    ...(!(logger as LoggerWithNoSpan).noSpan ? getTraceLogBindings() : {}),
   };
   return attrs;
 }
