@@ -29,7 +29,7 @@ export function getOptionsForDimension(
   const choice = config[dimId];
 
   if (dim.groups.length) {
-    const selected = choice?.groups || [];
+    const selected = choice?.groups ?? [];
     return dim.groups.map((grp) => ({
       id: grp.id,
       label: grp.label,
@@ -37,7 +37,7 @@ export function getOptionsForDimension(
     }));
   }
 
-  const selected = choice?.categories || [];
+  const selected = choice?.categories ?? [];
   return dim.categories.map((cat) => ({
     id: cat.id,
     label: cat.label,

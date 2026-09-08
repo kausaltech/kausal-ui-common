@@ -3,7 +3,7 @@ import type { ChalkInstance } from 'chalk';
 import type * as chalkModule from 'chalk';
 import dayjs from 'dayjs';
 import stringify from 'fast-safe-stringify';
-import type { Level, LoggerOptions, WriteFn } from 'pino';
+import type { Level, LoggerOptions } from 'pino';
 
 import type { LogRecord } from './logger';
 
@@ -137,8 +137,10 @@ export function writeLog(record: ChalkRecord) {
   logFunc(...args);
 }
 
-const write = (obj: LogRecord) => {
-  const { runtime, time, level, msg, logger, ...rest } = obj;
+// Pino types `write` as accepting a bare `object`, so we take one and narrow to
+// the record shape our own formatters put on the wire.
+const write = (record: object) => {
+  const { runtime, time, level, msg, logger, ...rest } = record as LogRecord;
   try {
     const record: ChalkRecord = {
       runtime,
@@ -162,7 +164,7 @@ export function setupBrowserLogging(options: LoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write: write as WriteFn,
+    write,
   };
 }
 
@@ -186,6 +188,6 @@ export function setupEdgeLogging(options: LoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write: write as WriteFn,
+    write,
   };
 }

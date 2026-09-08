@@ -6,10 +6,10 @@ import { join } from 'node:path';
 import * as lockfile from 'proper-lockfile';
 
 /**
+ * @param {NodeRequire} require
  * @param {string[]} packageNames
  */
-function tryImportThemePackage(packageNames) {
-  const require = createRequire(import.meta.url);
+function tryImportThemePackage(require, packageNames) {
   for (const packageName of packageNames) {
     try {
       return require(packageName);
@@ -31,7 +31,7 @@ export function initializeThemes(rootDir) {
   const require = createRequire(join(rootDir, 'package.json'));
   try {
     const destPath = join(rootDir, 'public', 'static', 'themes');
-    const themesPrivate = tryImportThemePackage([
+    const themesPrivate = tryImportThemePackage(createRequire(import.meta.url), [
       '@kausal-private/themes-private/setup.cjs',
       '@kausal/themes-private/setup.cjs',
     ]);
@@ -40,9 +40,11 @@ export function initializeThemes(rootDir) {
       generateThemeSymlinksPrivate(destPath, { verbose: false });
     } else {
       console.log('Private themes not found; using public themes');
-      const {
-        generateThemeSymlinks: generateThemeSymlinksPublic,
-      } = require('@kausal/themes/setup.cjs');
+      const themesPublic = tryImportThemePackage(require, ['@kausal/themes/setup.cjs']);
+      if (!themesPublic) {
+        throw new Error('Neither private nor public theme packages could be loaded');
+      }
+      const { generateThemeSymlinks: generateThemeSymlinksPublic } = themesPublic;
       generateThemeSymlinksPublic(destPath, { verbose: false });
     }
   } finally {

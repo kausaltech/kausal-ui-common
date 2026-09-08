@@ -8,12 +8,24 @@ import { pino } from 'pino';
 import { REQUEST_CORRELATION_ID_HEADER } from '../constants/headers.mjs';
 import { getKubernetesLogging } from '../env/runtime.ts';
 
+/** `globalThis` with the slot we stash the process-wide root logger in. */
+type LoggerGlobal = typeof globalThis & {
+  __kausal_root_logger__?: Logger;
+};
+
+/**
+ * A logger tagged by {@link getLogger} to opt out of trace/span bindings. Pino
+ * offers no typed extension point for per-logger flags, so we describe the
+ * augmented shape here instead of reaching in untyped.
+ */
+export type LoggerWithNoSpan = Logger & { noSpan?: boolean };
+
 export function getRootLogger() {
-  return globalThis['__kausal_root_logger__'] as Logger | undefined;
+  return (globalThis as LoggerGlobal).__kausal_root_logger__;
 }
 
 export function setRootLogger(logger: Logger) {
-  globalThis['__kausal_root_logger__'] = logger;
+  (globalThis as LoggerGlobal).__kausal_root_logger__ = logger;
 }
 
 export type LogRecord = {
@@ -142,7 +154,7 @@ export function getLogger(
     }
     const logger = parent.child(allBindings);
     if (opts.noSpan) {
-      logger['noSpan'] = true;
+      (logger as LoggerWithNoSpan).noSpan = true;
     }
     return logger;
   }

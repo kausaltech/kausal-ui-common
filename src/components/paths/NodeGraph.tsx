@@ -1034,13 +1034,13 @@ function buildTooltipRow(
   const displayName = specialSeriesLabels?.[param.seriesName] || param.seriesName;
   const getMarker = () => {
     if (param?.dimensionNames?.[1] === 'Goal')
-      return `<span style=\"display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${color};\"></span>`;
+      return `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>`;
     if (param?.dimensionNames?.[1] === 'Total')
-      return `<span style=\"display:inline-block;margin-right:4px;width:10px;height:2px;background-color:${showTotalLine ? color : 'transparent'};\"></span>`;
+      return `<span style="display:inline-block;margin-right:4px;width:10px;height:2px;background-color:${showTotalLine ? color : 'transparent'};"></span>`;
     else if (param?.componentSubType === 'line')
-      return `<span style=\"display:inline-block;margin-right:4px;margin-bottom:3px;width:10px;height:4px;background-color:${color};\"></span>`;
+      return `<span style="display:inline-block;margin-right:4px;margin-bottom:3px;width:10px;height:4px;background-color:${color};"></span>`;
     else
-      return `<span style=\"display:inline-block;margin-right:4px;width:10px;height:10px;background-color:${color};\"></span>`;
+      return `<span style="display:inline-block;margin-right:4px;width:10px;height:10px;background-color:${color};"></span>`;
   };
   const seriesMarker = getMarker();
   return `<div style="margin: 2px 0;">

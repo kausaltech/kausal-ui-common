@@ -1,31 +1,23 @@
-/// <reference path="./echarts-i18n.d.ts" />
 import * as echarts from 'echarts/core';
 // The plain `echarts/i18n/lang*` files are UMD modules that only
 // side-effect-register themselves under their own name and export NOTHING —
 // importing them here used to register `undefined` for every alias below,
-// silently falling back to English. The `-obj` variants export the locale
-// object (their `module.exports`, which ESM interop maps to the default
-// import). Static imports are required so this works under both webpack
-// (Next.js) and Vite (Storybook), where top-level `require()` is unavailable.
-import langCS from 'echarts/i18n/langCS-obj.js';
-import langDE from 'echarts/i18n/langDE-obj.js';
-import langEN from 'echarts/i18n/langEN-obj.js';
-import langES from 'echarts/i18n/langES-obj.js';
-import langFI from 'echarts/i18n/langFI-obj.js';
-import langPL from 'echarts/i18n/langPL-obj.js';
-import langPTBr from 'echarts/i18n/langPT-br-obj.js';
-import langSV from 'echarts/i18n/langSV-obj.js';
+// silently falling back to English. The `-obj` variants spread the locale
+// object onto `exports`, so the CommonJS default import is the locale itself.
+//
+// These have to be static imports: a `require()` here resolved fine under
+// webpack but threw `require is not defined` under any ESM-native loader,
+// which broke the Vite-based Storybook/Vitest run.
+import cs from 'echarts/i18n/langCS-obj.js';
+import de from 'echarts/i18n/langDE-obj.js';
+import en from 'echarts/i18n/langEN-obj.js';
+import es from 'echarts/i18n/langES-obj.js';
+import fi from 'echarts/i18n/langFI-obj.js';
+import pl from 'echarts/i18n/langPL-obj.js';
+import ptBr from 'echarts/i18n/langPT-br-obj.js';
+import sv from 'echarts/i18n/langSV-obj.js';
 
 type LocaleOption = Parameters<typeof echarts.registerLocale>[1];
-
-const cs = langCS as LocaleOption;
-const de = langDE as LocaleOption;
-const en = langEN as LocaleOption;
-const es = langES as LocaleOption;
-const fi = langFI as LocaleOption;
-const pl = langPL as LocaleOption;
-const ptBr = langPTBr as LocaleOption;
-const sv = langSV as LocaleOption;
 
 const localeStrings: Record<string, LocaleOption> = {
   cs,

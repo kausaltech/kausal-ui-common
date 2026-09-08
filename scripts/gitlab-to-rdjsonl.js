@@ -4,12 +4,54 @@
  * Reads GitLab format JSON from stdin and outputs RDJSONL to stdout.
  */
 
-/* eslint-disable @typescript-eslint/use-unknown-in-catch-callback-variable */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/**
+ * @typedef {object} GitLabLines
+ * @property {number} begin
+ * @property {number} [end]
+ * @property {number} [column]
+ * @property {number} [end_column]
+ */
+
+/**
+ * @typedef {object} GitLabLocation
+ * @property {string} path
+ * @property {GitLabLines} lines
+ */
+
+/**
+ * @typedef {object} GitLabDiagnostic
+ * @property {string} description
+ * @property {string} severity
+ * @property {GitLabLocation} location
+ */
+
+/**
+ * @typedef {object} RdPosition
+ * @property {number} line
+ * @property {number} column
+ */
+
+/**
+ * @typedef {object} RdRange
+ * @property {RdPosition} start
+ * @property {RdPosition} [end]
+ */
+
+/**
+ * @typedef {object} RdDiagnostic
+ * @property {string} message
+ * @property {{ path: string, range: RdRange }} location
+ * @property {string} severity
+ */
+
+/** @type {Record<string, string>} */
+const SEVERITY_MAP = {
+  info: 'INFO',
+  minor: 'WARNING',
+  major: 'ERROR',
+  critical: 'ERROR',
+  blocker: 'ERROR',
+};
 
 /**
  * Map GitLab severity to RDJSONL severity
@@ -17,33 +59,35 @@
  * @returns {string} RDJSONL severity level
  */
 function mapSeverity(gitlabSeverity) {
-  const severityMap = {
-    info: 'INFO',
-    minor: 'WARNING',
-    major: 'ERROR',
-    critical: 'ERROR',
-    blocker: 'ERROR',
-  };
+  return SEVERITY_MAP[gitlabSeverity] ?? 'WARNING';
+}
 
-  return severityMap[gitlabSeverity] || 'WARNING';
+/**
+ * @param {unknown} err
+ * @returns {string}
+ */
+function getErrorMessage(err) {
+  return err instanceof Error ? err.message : String(err);
 }
 
 /**
  * Transform a single GitLab diagnostic to RDJSONL format
- * @param {Object} gitlabDiagnostic - GitLab format diagnostic
- * @returns {Object} RDJSONL format diagnostic
+ * @param {GitLabDiagnostic} gitlabDiagnostic - GitLab format diagnostic
+ * @returns {RdDiagnostic} RDJSONL format diagnostic
  */
 function transformDiagnostic(gitlabDiagnostic) {
   const { description, severity, location } = gitlabDiagnostic;
+  const { lines } = location;
 
+  /** @type {RdDiagnostic} */
   const rdjsonlDiagnostic = {
     message: description,
     location: {
       path: location.path,
       range: {
         start: {
-          line: location.lines.begin,
-          column: location.lines.column || 1,
+          line: lines.begin,
+          column: lines.column ?? 1,
         },
       },
     },
@@ -51,10 +95,10 @@ function transformDiagnostic(gitlabDiagnostic) {
   };
 
   // Add end position if available
-  if (location.lines.end) {
+  if (lines.end) {
     rdjsonlDiagnostic.location.range.end = {
-      line: location.lines.end,
-      column: location.lines.end_column || location.lines.column || 1,
+      line: lines.end,
+      column: lines.end_column ?? lines.column ?? 1,
     };
   }
 
@@ -65,53 +109,51 @@ function transformDiagnostic(gitlabDiagnostic) {
  * Main function to process input and output transformed diagnostics
  */
 async function main() {
-  try {
-    const chunks = [];
-    for await (const chunk of process.stdin) {
-      chunks.push(chunk);
-    }
-    const input = chunks.join('');
-    if (!input.trim()) {
-      console.error('Error: No input provided');
-      process.exit(1);
-    }
-
-    // Parse GitLab format JSON
-    let gitlabDiagnostics;
-    try {
-      gitlabDiagnostics = JSON.parse(input);
-    } catch (parseError) {
-      console.error('Error: Invalid JSON input');
-      console.error(parseError.message);
-      process.exit(1);
-    }
-
-    // Ensure input is an array
-    if (!Array.isArray(gitlabDiagnostics)) {
-      console.error('Error: Input must be an array of diagnostics');
-      process.exit(1);
-    }
-
-    // Transform each diagnostic and output as RDJSONL
-    gitlabDiagnostics.forEach((diagnostic) => {
-      try {
-        const rdjsonlDiagnostic = transformDiagnostic(diagnostic);
-        console.log(JSON.stringify(rdjsonlDiagnostic));
-      } catch (transformError) {
-        console.error(`Error transforming diagnostic: ${transformError.message}`);
-        console.error(`Diagnostic: ${JSON.stringify(diagnostic)}`);
-      }
-    });
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  const input = chunks.join('');
+  if (!input.trim()) {
+    console.error('Error: No input provided');
     process.exit(1);
+  }
+
+  // Parse GitLab format JSON
+  /** @type {unknown} */
+  let parsed;
+  try {
+    parsed = JSON.parse(input);
+  } catch (parseError) {
+    console.error('Error: Invalid JSON input');
+    console.error(getErrorMessage(parseError));
+    process.exit(1);
+  }
+
+  // Ensure input is an array
+  if (!Array.isArray(parsed)) {
+    console.error('Error: Input must be an array of diagnostics');
+    process.exit(1);
+  }
+
+  const gitlabDiagnostics = /** @type {GitLabDiagnostic[]} */ (parsed);
+
+  // Transform each diagnostic and output as RDJSONL
+  for (const diagnostic of gitlabDiagnostics) {
+    try {
+      const rdjsonlDiagnostic = transformDiagnostic(diagnostic);
+      console.log(JSON.stringify(rdjsonlDiagnostic));
+    } catch (transformError) {
+      console.error(`Error transforming diagnostic: ${getErrorMessage(transformError)}`);
+      console.error(`Diagnostic: ${JSON.stringify(diagnostic)}`);
+    }
   }
 }
 
 // Run the main function if this script is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
-    console.error(`Error: ${error.message}`);
+  main().catch((/** @type {unknown} */ error) => {
+    console.error(`Error: ${getErrorMessage(error)}`);
     process.exit(1);
   });
 }

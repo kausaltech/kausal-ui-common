@@ -53,7 +53,7 @@ export default function DimensionControls({
               }));
             }}
             options={sliceableDims}
-            value={sliceableDims.find((dim) => sliceConfig.dimensionId === dim.id) || null}
+            value={sliceableDims.find((dim) => sliceConfig.dimensionId === dim.id) ?? null}
             isMulti={false}
             isClearable={false}
           />

@@ -1,5 +1,4 @@
-import { parseCookie, stringifySetCookie } from 'cookie';
-import setCookie from 'set-cookie-parser';
+import { parseCookie, parseSetCookie, stringifySetCookie } from 'cookie';
 
 import { getProductId } from '@common/env/static';
 
@@ -33,7 +32,7 @@ export function getClientCookiesFromBackendResponse(
   apiType?: APIType
 ): string[] {
   // Pass cookies to the client, modify some of the attributes along the way
-  const cookies = setCookie.parse(backendResponse.headers.getSetCookie());
+  const cookies = backendResponse.headers.getSetCookie().map((header) => parseSetCookie(header));
   const prefix = getCookiePrefix(apiType);
   return cookies.map((ck) => {
     return stringifySetCookie({

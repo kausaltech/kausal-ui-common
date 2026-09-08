@@ -1,5 +1,5 @@
 /* istanbul ignore file */
-import type { LoggerOptions as PinoLoggerOptions, WriteFn } from 'pino';
+import type { LoggerOptions as PinoLoggerOptions } from 'pino';
 import { pino } from 'pino';
 
 import type * as ChalkLogger from './chalk-logger';
@@ -7,8 +7,10 @@ import { getGlobalContext, getRootLoggerOptions } from './init';
 import { type LogRecord, getRootLogger, isPrettyLogger, setRootLogger } from './logger';
 
 export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
-  const write = (obj: LogRecord) => {
-    const { time, level, ...rest } = obj;
+  // Pino types `write` as accepting a bare `object`, so we take one and narrow
+  // to the record shape our own formatters put on the wire.
+  const write = (record: object) => {
+    const { time, level, ...rest } = record as LogRecord;
     const rec = {
       level,
       time: new Date(time).toISOString(),
@@ -36,7 +38,7 @@ export function setupEdgeLoggingJson(options: PinoLoggerOptions) {
     formatters: {
       level: options.formatters!.level,
     },
-    write: write as WriteFn,
+    write,
   };
 }
 
