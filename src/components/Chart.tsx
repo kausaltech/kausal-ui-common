@@ -8,6 +8,7 @@ import {
   type LineSeriesOption,
   PieChart,
   type PieSeriesOption,
+  type ScatterSeriesOption,
 } from 'echarts/charts';
 import {
   AriaComponent,
@@ -88,6 +89,7 @@ export type ECOption = ComposeOption<
   | BarSeriesOption
   | LineSeriesOption
   | PieSeriesOption
+  | ScatterSeriesOption
   | TitleComponentOption
   | TooltipComponentOption
   | GridComponentOption
