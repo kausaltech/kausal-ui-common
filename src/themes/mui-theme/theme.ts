@@ -6,8 +6,6 @@ import { getComponents } from './components';
 import { getPalette } from './palette';
 import { getTypography } from './typography';
 
-const isServer = typeof window === 'undefined';
-
 declare module '@mui/material/styles' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface Theme extends BaseTheme {}
@@ -17,14 +15,16 @@ declare module '@emotion/react' {
   interface Theme extends BaseTheme, MuiTheme {}
 }
 
-let muiTheme: MuiTheme;
-
+/**
+ * Builds the MUI theme for a single base theme.
+ *
+ * This must stay a pure function of `theme`. Plans that share a hostname and
+ * differ only by basePath are reached through client-side navigation, so one
+ * browser document can render several themes in turn; caching the result here
+ * would pin every later plan to whichever theme loaded first.
+ */
 export function initializeMuiTheme(theme: BaseTheme): MuiTheme {
-  if (muiTheme && !isServer) {
-    return muiTheme;
-  }
-
-  muiTheme = {
+  return {
     ...theme,
     ...createTheme({
       // Shadows are modified from the MUI base theme (https://mui.com/material-ui/customization/default-theme/)
@@ -66,6 +66,4 @@ export function initializeMuiTheme(theme: BaseTheme): MuiTheme {
       components: getComponents(theme),
     }),
   };
-
-  return muiTheme;
 }
