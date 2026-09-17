@@ -14,6 +14,8 @@ const prodAssetPrefix = isProd ? process.env.NEXTJS_ASSET_PREFIX : undefined;
 
 const isCoverageEnabled = process.env.CODE_COVERAGE === '1';
 
+const buildId = process.env.NEXTJS_BUILD_ID || process.env.BUILD_ID || undefined;
+
 export function getNextConfig(projectRoot: string): NextConfig {
   const config: NextConfig = {
     assetPrefix: prodAssetPrefix,
@@ -98,10 +100,9 @@ export function getNextConfig(projectRoot: string): NextConfig {
       : undefined,
     // eslint-disable-next-line @typescript-eslint/require-await
     generateBuildId: async () => {
-      if (process.env.NEXTJS_BUILD_ID) return process.env.NEXTJS_BUILD_ID;
-      // If a fixed Build ID was not provided, fall back to the default implementation.
-      return null;
+      return buildId ?? null;
     },
+    deploymentId: buildId,
     turbopack: {
       resolveAlias: {
         '@common/*': './kausal_common/src/*',
