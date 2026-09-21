@@ -5,7 +5,7 @@ import type { JSONSchemaForNPMPackageJsonFiles } from '@schemastore/package';
 
 import type { ProjectId } from './static.js';
 
-const KNOWN_PROJECTS = ['watch-ui', 'paths-ui', '@kausal/nzc-data-studio'];
+const KNOWN_PROJECTS = ['watch-ui', 'paths-ui', '@kausal/nzc-data-studio', 'kausal-data-studio'];
 
 export function getPackageData(basePath: string): JSONSchemaForNPMPackageJsonFiles {
   const contents = fs.readFileSync(path.join(basePath, 'package.json'), 'utf8');
@@ -25,6 +25,7 @@ export function getProjectIdFromPackageJson(basePath: string): ProjectId {
   }
   switch (foundId) {
     case '@kausal/nzc-data-studio':
+    case 'kausal-data-studio':
       return 'data-studio';
     case 'watch-ui':
       return 'watch-ui';
