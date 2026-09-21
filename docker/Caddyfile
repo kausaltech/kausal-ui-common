@@ -57,7 +57,7 @@ header {
 }
 
 header @tls {
-	Strict-Transport-Security "max-age={$HSTS_MAX_AGE:31536000}; includeSubDomains"
+	Strict-Transport-Security "max-age={$HSTS_MAX_AGE:300}; includeSubDomains"
 	defer
 }
 
