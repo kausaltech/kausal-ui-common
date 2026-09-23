@@ -31,7 +31,10 @@ import { parseLocaleNumber } from './parse-number';
  * This replaces the number editor, and holds keys typed while it is opening —
  * Enter and Tab included — until its input has focus. It also parses typed and
  * pasted numbers by the UI locale (see `parseLocaleNumber`), so "1.500" is
- * fifteen hundred to a German user, whether typed or pasted from Excel.
+ * fifteen hundred to a German user and one and a half to a Swiss one, whether
+ * typed or pasted from Excel — and a pasted value it cannot read leaves the cell
+ * unchanged rather than falling through to Glide's `parseFloat`, which turns
+ * "1'234.5" into 1.
  *
  * ```tsx
  * const numbers = useGlideNumberEditing({ locale, getCellContent });
@@ -128,7 +131,9 @@ export function useGlideNumberEditing({
     (text, target) => {
       if (target.kind !== GridCellKind.Number) return undefined;
       const value = parseLocaleNumber(text, locale);
-      if (value === undefined) return undefined;
+      // Not a number: keep the cell as it is. Returning `undefined` would hand
+      // the text to Glide's own paste, whose `parseFloat` reads "1'234.5" as 1.
+      if (value === undefined) return target;
       return {
         ...target,
         data: value ?? undefined,
