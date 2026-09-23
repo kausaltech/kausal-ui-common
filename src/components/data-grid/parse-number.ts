@@ -37,7 +37,7 @@ export function parseLocaleNumber(input: string, locale: string): number | null 
     } else {
       const parts = text.split(separator);
       const groupsOfThree =
-        /^-?\d{1,3}$/.test(parts[0] ?? '') && parts.slice(1).every((p) => /^\d{3}$/.test(p));
+        /^[+-]?\d{1,3}$/.test(parts[0] ?? '') && parts.slice(1).every((p) => /^\d{3}$/.test(p));
       const isLocaleDecimal = separator === decimalSeparator(locale);
       if (groupsOfThree && (!isLocaleDecimal || parts.length > 2)) {
         // "1.500" in German, "1,500" in English, or "1,234,567" anywhere: grouping.
