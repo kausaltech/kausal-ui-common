@@ -1,0 +1,195 @@
+#!/bin/bash
+# shellcheck disable=SC2086
+
+set -euo pipefail
+
+# Copied from kausal-backend-common (development/git-hooks/check-submodules.sh, c35cbf3).
+# Changes: tolerates the PRE_COMMIT_* variables being unset, so it also runs as a
+# `manual`-stage hook (in the original, a run without PRE_COMMIT_TO_REF always
+# passed: see find_submodule_commit_hash); and fetches the submodule's origin once
+# before declaring a commit unpushed, since its remote-tracking refs may predate a
+# push made elsewhere.
+
+# Set by pre-commit / prek for pre-push hooks; absent when run by hand.
+PRE_COMMIT_FROM_REF=${PRE_COMMIT_FROM_REF:-}
+PRE_COMMIT_TO_REF=${PRE_COMMIT_TO_REF:-}
+PRE_COMMIT_REMOTE_BRANCH=${PRE_COMMIT_REMOTE_BRANCH:-}
+
+### ----------------------------------------------------------------------
+txtred='\033[0;31m'       # red
+bldred='\033[1;31m'       # red bold
+txtgrn='\033[0;32m'       # green
+bldgrn='\033[1;32m'       # green bold
+txtyel='\033[0;33m'       # yellow
+bldyel='\033[1;33m'       # yellow bold
+txtrst='\033[0m'          # Text reset
+
+# ------------------------------
+# regex
+SUBMODULE_REGEX_STATUS="([\+-uU[:space:]])([^[:space:]]*) ([^[:space:]]*)( ([^[:space:]]*))?"
+SUBMODULE_REGEX_MODULE="path = (.*)"
+
+# ------------------------------
+print_error() {
+  echo -e "${bldred}$1${txtrst}" 2>/dev/stderr
+}
+
+# ------------------------------
+print_success() {
+  echo -e "${bldgrn}$1${txtrst}"
+}
+
+# ------------------------------
+print_warning() {
+  echo -e "${bldyel}$1${txtrst}"
+}
+
+# ------------------------------
+print_warning_with_title() {
+  echo -e "${txtyel}$1: ${bldyel}$2${txtrst}"
+}
+
+# ------------------------------
+parse_git_branch() {
+  git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/'
+}
+
+# ------------------------------
+find_submodule_remote_ref() {
+  local l_remote_ref
+  #if git fetch origin main ; then
+  #  print_error "unable to fetch"
+  #fi
+  l_remote_ref=$(git ls-remote --exit-code --ref -b origin main | cut -f 1)
+  echo ${l_remote_ref}
+  return 0
+}
+
+
+
+# ------------------------------
+# $1 = path
+# $2 = the local revision that is being pushed to the remote
+find_submodule_commit_hash() {
+  # ${2:-} rather than $2: with no revision the caller passes one argument, and
+  # under `set -u` a bare $2 kills this subshell -- leaving the result empty, which
+  # the caller reads as "not part of the pushed revision" and passes.
+  local rev=${2:-}
+  if [ -z "$rev" ]; then
+    rev=HEAD
+  fi
+  local l_br
+  l_br=$(git ls-tree --object-only "${rev}" -- "$1")
+  echo $l_br
+  return 0
+}
+
+# ------------------------------
+# $1 = hash
+# $2 = path
+#
+check_submodule_is_pushed() {
+  # need to find the path for this module
+  local l_hash=$1
+  local l_path=$2
+
+  while read -r line ; do
+    if [[ ! "$line" =~ $SUBMODULE_REGEX_MODULE ]]; then
+      continue
+    fi
+    if [[ ! ${BASH_REMATCH[1]} == "${l_path}" ]]; then
+      continue
+    fi
+    local target_commit
+    target_commit=$(find_submodule_commit_hash "${l_path}" "${PRE_COMMIT_TO_REF}")
+    if [[ -z ${target_commit} ]]; then
+      # The revision being pushed does not carry this submodule (e.g. it was added later).
+      print_success "  Submodule [$l_path] is not part of the pushed revision"
+      return 0
+    fi
+
+    # Query the submodule's own repository with `git -C` rather than `cd`: the current directory must
+    # stay at the project root, because this function is called once per submodule with relative paths.
+    # An unknown commit makes `git branch` exit non-zero; treat that as "not on any remote branch".
+    remote_branches="$(git -C ${l_path} branch -r --contains ${target_commit} 2>/dev/null || true)"
+    if [[ -z ${remote_branches} ]]; then
+      # The remote-tracking refs may predate a push made from another clone.
+      git -C ${l_path} fetch --quiet origin 2>/dev/null || true
+      remote_branches="$(git -C ${l_path} branch -r --contains ${target_commit} 2>/dev/null || true)"
+    fi
+    if [[ -n ${remote_branches} ]] ; then
+      # If pushing to the `main` branch, we need to check that the submodule is
+      # also pushed to the `main` branch.
+      if [[ $PRE_COMMIT_REMOTE_BRANCH == "refs/heads/main" ]]; then
+        if [[ ! ${remote_branches} =~ "origin/main" ]]; then
+          print_error "  Submodule [$l_path] is not pushed to the main branch on remote"
+          return 1
+        fi
+      fi
+      print_success "  All is good with this submodule..."
+      return 0
+    fi
+    print_error "Stop! Pre-commit condition failed."
+    echo "Did you forget to push submodule [$l_path] to remote?"
+    echo "Cannot proceed until you do so."
+
+    print_warning_with_title "Checking" "${PRE_COMMIT_FROM_REF}..${PRE_COMMIT_TO_REF}"
+    print_warning_with_title "  Submodule local ref" ${l_hash}
+    return 1
+  done < "${SUBMODULE_CONFIG_FILE}"
+}
+
+### ----------------------------------------------------------------------
+### MAIN
+### ----------------------------------------------------------------------
+
+PROJECT_ROOT=$(realpath "$(git rev-parse --git-dir)"/..)
+
+# ------------------------------
+# exit if nothing to do here...
+SUBMODULE_CONFIG_FILE=${PROJECT_ROOT}/.gitmodules
+if [[ ! -f ${SUBMODULE_CONFIG_FILE} ]]; then
+  echo "No submodules found in .gitmodules"
+  exit 0
+fi
+
+echo "Checking submodules..."
+
+# ------------------------------
+IFS=$'\x0A'$'\x0D'
+#save initial dir
+pushd . > /dev/null
+cd ${PROJECT_ROOT} || exit
+
+FAILED=0
+
+# loop through all submodules
+git_submodules=$(git submodule)
+for l in $git_submodules ; do
+  if [[ ! "$l" =~ $SUBMODULE_REGEX_STATUS ]]; then
+    continue
+  fi
+  status=${BASH_REMATCH[1]}
+  hash=${BASH_REMATCH[2]}
+  path=${BASH_REMATCH[3]}
+  branch=${BASH_REMATCH[5]}
+
+  echo "[$path]"
+  if [[ $status == "-" ]]; then
+    print_error "  Submodule [$path] not initialized"
+    exit 1
+  else
+    if check_submodule_is_pushed ${hash} ${path}; then
+      print_success "  Submodule [$path] OK"
+    else
+      IFS=$''
+      print_error "  Submodule [$path] FAILED"
+      FAILED=1
+    fi
+  fi
+done
+
+# go back to original folder
+popd > /dev/null || exit
+
+exit $FAILED
