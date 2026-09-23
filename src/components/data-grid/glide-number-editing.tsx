@@ -305,7 +305,10 @@ function createNumberEditor(buffer: TypeaheadBuffer, locale: string) {
           const end = (next ?? current).length;
           // Opened by typing: caret after the typed keys. Opened by Enter or
           // double-click: select all, so typing replaces.
-          event.target.setSelectionRange(isHighlighted && initialValue === undefined ? 0 : end, end);
+          event.target.setSelectionRange(
+            isHighlighted && initialValue === undefined ? 0 : end,
+            end
+          );
         }}
         onChange={(event) => apply(event.target.value)}
         onKeyDown={(event) => {
