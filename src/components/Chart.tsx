@@ -8,9 +8,11 @@ import {
   type LineSeriesOption,
   PieChart,
   type PieSeriesOption,
+  type ScatterSeriesOption,
 } from 'echarts/charts';
 import {
   AriaComponent,
+  type AriaComponentOption,
   AxisPointerComponent,
   DatasetComponent,
   type DatasetComponentOption,
@@ -87,10 +89,12 @@ export type ECOption = ComposeOption<
   | BarSeriesOption
   | LineSeriesOption
   | PieSeriesOption
+  | ScatterSeriesOption
   | TitleComponentOption
   | TooltipComponentOption
   | GridComponentOption
   | DatasetComponentOption
+  | AriaComponentOption
 >;
 
 const DEFAULT_STYLES: ECOption = {
