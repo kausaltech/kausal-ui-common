@@ -48,6 +48,19 @@ log {
 
 encode zstd gzip
 
+# TLS is terminated upstream, so HSTS is gated on what the edge reports.
+@tls header X-Forwarded-Proto https
+
+header {
+	X-Content-Type-Options nosniff
+	defer
+}
+
+header @tls {
+	Strict-Transport-Security "max-age={$HSTS_MAX_AGE:300}; includeSubDomains"
+	defer
+}
+
 route /_caddymetrics {
 	@allowed client_ip private_ranges
 	handle @allowed {
