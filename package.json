@@ -9,6 +9,7 @@
     "@emotion/styled": ">=11",
     "@eslint/config-helpers": "^0.5.5",
     "@eslint/core": "^1.2.1",
+    "@glideapps/glide-data-grid": ">=6",
     "@kausal/themes": "*",
     "@mui/material": ">=7",
     "@mui/material-nextjs": ">=7",
