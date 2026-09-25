@@ -2,12 +2,10 @@
 
 import { useMemo } from 'react';
 
-import { useTheme } from '@common/themes';
 import type { Theme } from '@emotion/react';
-import {
-  css,
-  Global,
-} from '@emotion/react';
+import { Global, css } from '@emotion/react';
+
+import { useTheme } from '@common/themes';
 
 const getGlobalStyles = (theme: Theme) => css`
   :root {
@@ -20,7 +18,7 @@ const getGlobalStyles = (theme: Theme) => css`
     --inner-block-padding-y: ${theme.spaces.s300};
   }
 
-  @media (min-width: ${theme.breakpointMd}) {
+  ${theme.breakpoints.up('md')} {
     :root {
       --block-padding-top: calc(${theme.spaces.s600});
       --block-padding-bottom: calc(${theme.spaces.s600});
@@ -38,9 +36,11 @@ const getGlobalStyles = (theme: Theme) => css`
   }
 
   body {
-    font-family: ${theme.fontFamily !== ''
-      ? `${theme.fontFamily}, ${theme.fontFamilyFallback}`
-      : theme.fontFamilyFallback};
+    font-family: ${
+      theme.fontFamily !== ''
+        ? `${theme.fontFamily}, ${theme.fontFamilyFallback}`
+        : theme.fontFamilyFallback
+    };
     font-size: ${theme.fontSizeBase};
     font-weight: ${theme.fontWeightBase};
     line-height: ${theme.lineHeightBase};
@@ -71,9 +71,11 @@ const getGlobalStyles = (theme: Theme) => css`
   h4,
   h5,
   h6 {
-    font-family: ${theme.fontFamilyHeadings !== ''
-      ? `${theme.fontFamilyHeadings}, ${theme.fontFamilyFallbackHeadings}`
-      : theme.fontFamilyFallbackHeadings};
+    font-family: ${
+      theme.fontFamilyHeadings !== ''
+        ? `${theme.fontFamilyHeadings}, ${theme.fontFamilyFallbackHeadings}`
+        : theme.fontFamilyFallbackHeadings
+    };
     font-weight: ${theme.headingsFontWeight};
     line-height: ${theme.lineHeightMd};
     color: ${theme.headingsColor};
@@ -81,7 +83,7 @@ const getGlobalStyles = (theme: Theme) => css`
     hyphens: auto;
 
     // Allow hyphenation only on small screens
-    @media (min-width: ${theme.breakpointSm}) {
+    ${theme.breakpoints.up('sm')} {
       hyphens: none;
     }
   }

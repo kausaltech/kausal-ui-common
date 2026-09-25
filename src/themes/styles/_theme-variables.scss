@@ -148,10 +148,22 @@ $causality-increases-color: #279a6d;
 $causality-decreases-color: #d46262;
 $causality-is-part-of-color: #88847c;
 
-// Breakpoints
-$breakpoint-sm: 576px;
-$breakpoint-md: 768px;
-$breakpoint-lg: 992px;
-$breakpoint-xl: 1200px;
+// Breakpoints, matching MUI's defaults (theme.breakpoints) so Bootstrap classes
+// and reactstrap components switch at the same widths as the MUI and Emotion
+// styles. MUI has no xxl breakpoint, so Bootstrap's is dropped.
+$grid-breakpoints: (
+  xs: 0,
+  sm: 600px,
+  md: 900px,
+  lg: 1200px,
+  xl: 1536px,
+);
+// Containers are fluid below md; an sm step would make them narrower than
+// today's between 600px and 899px.
+$container-max-widths: (
+  md: 840px,
+  lg: 1140px,
+  xl: 1320px,
+);
 
 $popover-max-width: 480px;
