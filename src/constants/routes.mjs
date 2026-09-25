@@ -7,7 +7,10 @@ export const API_SENTRY_TUNNEL_PATH = '/api/sentry-event';
 
 export const HEALTH_CHECK_PUBLIC_PATH = '/_health';
 export const API_HEALTH_CHECK_PATH = '/api/health';
+// next-auth's session endpoint, for apps that still run next-auth
 export const NEXT_AUTH_SESSION_PATH = '/api/auth/session';
+/** better-auth's session endpoint. */
+export const AUTH_SESSION_PATH = '/api/auth/get-session';
 
 // This is a fake Sentry DSN that we use to initialize Sentry when Spotlight is enabled,
 // but we don't have a real Sentry DSN.
