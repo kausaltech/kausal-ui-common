@@ -1,0 +1,24 @@
+{
+  "name": "@kausal/ui-common-unit-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runs the unit tests of kausal-ui-common on their own, outside a host app",
+  "type": "module",
+  "scripts": {
+    "test": "jest"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "26.8.1",
+      "onFail": "warn"
+    }
+  },
+  "devDependencies": {
+    "@swc/core": "^1.16.2",
+    "@swc/jest": "^0.2.39",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.5.2"
+  }
+}

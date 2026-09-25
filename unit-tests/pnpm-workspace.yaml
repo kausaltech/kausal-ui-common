@@ -1,0 +1,7 @@
+# A workspace of its own, so that pnpm doesn't treat the host app as the
+# workspace root when kausal_common is checked out as a submodule.
+allowBuilds:
+  '@parcel/watcher': false
+  '@swc/core': true
+  unrs-resolver: false
+minimumReleaseAge: 1440
