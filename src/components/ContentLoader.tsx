@@ -36,7 +36,8 @@ const ContentLoader = ({
   }, []);
 
   if (!isVisible) {
-    return null;
+    // Mark as busy also in SSR HTML; the PDF export waits until nothing is busy
+    return <div aria-busy="true" hidden />;
   }
 
   return (
