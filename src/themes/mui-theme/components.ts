@@ -255,6 +255,11 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           '&:hover': {
             backgroundColor: theme.tableHoverBg,
           },
+          // The ripple is disabled (see MuiButtonBase), and it's the only focus cue
+          // MUI gives icon buttons. Use the same ring as MuiButton, for keyboard focus.
+          '&.Mui-focusVisible': {
+            boxShadow: `0 0 0 0.25rem ${theme.inputBtnFocusColor}`,
+          } satisfies StyleOverrides<'MuiIconButton'>,
         },
       },
     },
