@@ -583,6 +583,8 @@ export default function NodeGraph(props: NodeGraphProps) {
       onZrClick={handleChartClick}
       locale={locale}
       ref={chartRef}
+      // Refetches (e.g. scenario changes) re-render with new data; don't replay the animation
+      animateUpdates={false}
     />
   );
 }
