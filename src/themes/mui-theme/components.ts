@@ -39,7 +39,8 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           '&:hover': {
             boxShadow: 'none',
           } satisfies StyleOverrides<'MuiSelect'>,
-          '&:focus': {
+          // Keyboard focus only, as Bootstrap's .btn:focus-visible did
+          '&.Mui-focusVisible': {
             boxShadow: `0 0 0 0.25rem ${theme.inputBtnFocusColor}`,
           } satisfies StyleOverrides<'MuiButton'>,
         },
