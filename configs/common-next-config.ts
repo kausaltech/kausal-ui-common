@@ -25,6 +25,7 @@ export function getNextConfig(projectRoot: string): NextConfig {
     },
     distDir: isCoverageEnabled ? '.next-coverage' : undefined,
     productionBrowserSourceMaps: true,
+    poweredByHeader: false,
     compiler: {
       emotion: {
         autoLabel: 'always',
