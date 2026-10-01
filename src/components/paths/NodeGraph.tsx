@@ -527,6 +527,8 @@ export default function NodeGraph(props: NodeGraphProps) {
       right: 10,
       bottom: 10,
       data: legendData,
+      // Disable hiding series from legend
+      selectedMode: false,
       formatter: (name: string) => {
         return specialSeriesLabels[name as keyof typeof specialSeriesLabels] || name;
       },
