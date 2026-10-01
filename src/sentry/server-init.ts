@@ -112,6 +112,19 @@ function makeNullTransport(options: BaseTransportOptions) {
   );
 }
 
+const MONITOR_USER_AGENTS = [
+  'Gatus/',
+  'Blackbox Exporter/',
+  'DigitalOcean Uptime Probe',
+  'GoogleStackdriverMonitoring',
+  'curl/',
+].map((ua) => ua.toLowerCase());
+
+function isUptimeMonitor(userAgent: string) {
+  const normalizedUa = userAgent.toLowerCase();
+  return MONITOR_USER_AGENTS.find((monUa) => normalizedUa.startsWith(monUa.toLowerCase()));
+}
+
 function getCommonOptions() {
   const runtimeConfig = getRuntimeConfig();
   /*
@@ -140,6 +153,11 @@ function getCommonOptions() {
     transport: runtimeConfig.sentryDsn || !enableSpotlight ? undefined : makeNullTransport,
     tracesSampler(ctx: SamplingContext) {
       const transactionPrefix = process.env.NEXT_RUNTIME === 'edge' ? 'middleware ' : '';
+
+      const userAgent = ctx.normalizedRequest?.headers?.['user-agent'];
+      if (userAgent && isUptimeMonitor(userAgent)) {
+        return false;
+      }
 
       const matchesVerb = (verb: 'GET' | 'POST', path: string) =>
         ctx.name == `${transactionPrefix}${verb} ${path}`;
