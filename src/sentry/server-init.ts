@@ -118,6 +118,7 @@ const MONITOR_USER_AGENTS = [
   'DigitalOcean Uptime Probe',
   'GoogleStackdriverMonitoring',
   'curl/',
+  'kube-probe/',
 ].map((ua) => ua.toLowerCase());
 
 function isUptimeMonitor(userAgent: string) {
