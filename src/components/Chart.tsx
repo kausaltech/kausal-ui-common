@@ -131,6 +131,12 @@ type Props = {
   renderer?: 'svg' | 'canvas';
   locale?: string;
   ref?: Ref<ChartHandle>;
+  /**
+   * Animate data updates after the first render. Every `data` change rebuilds
+   * the chart (`notMerge`), which replays the entry animation; set to false to
+   * apply updates (e.g. refetched data) without animation.
+   */
+  animateUpdates?: boolean;
 };
 
 export function Chart({
@@ -144,8 +150,10 @@ export function Chart({
   renderer = 'canvas',
   locale = 'en',
   ref,
+  animateUpdates = true,
 }: Props) {
   const chartRef = useRef<echarts.ECharts | null>(null);
+  const hasRenderedDataRef = useRef(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const theme = useBaseTheme();
   const [isRendering, setIsRendering] = useState(true);
@@ -170,6 +178,7 @@ export function Chart({
       locale: locale,
     });
     chartRef.current = chart;
+    hasRenderedDataRef.current = false;
 
     chart.on('finished', () => {
       setIsRendering(false);
@@ -238,18 +247,21 @@ export function Chart({
   // Update the chart when the data changes
   useEffect(() => {
     if (chartRef.current && data) {
+      const skipAnimation = !animateUpdates && hasRenderedDataRef.current;
       const augmentedData = {
         ...data,
         ...DEFAULT_STYLES,
+        ...(skipAnimation ? { animation: false } : {}),
       };
       setIsRendering(true);
       chartRef.current.setOption(augmentedData, true);
+      hasRenderedDataRef.current = true;
 
       if (withResizeLegend) {
         resizeLegend(chartRef.current);
       }
     }
-  }, [data, withResizeLegend]);
+  }, [data, withResizeLegend, animateUpdates]);
 
   // Add click handler to the chart
   useEffect(() => {
