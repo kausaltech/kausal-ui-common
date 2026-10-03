@@ -20,6 +20,7 @@ import type { Logger } from 'pino';
 
 import {
   API_SENTRY_TUNNEL_PATH,
+  AUTH_SESSION_PATH,
   FAKE_SENTRY_DSN,
   GRAPHQL_CLIENT_PROXY_PATH,
   HEALTH_CHECK_PUBLIC_PATH,
@@ -45,6 +46,7 @@ const IGNORE_PATHS = [
   HEALTH_CHECK_PUBLIC_PATH,
   API_SENTRY_TUNNEL_PATH,
   NEXT_AUTH_SESSION_PATH,
+  AUTH_SESSION_PATH,
   '/__nextjs_original-stack-frame',
   '/__nextjs_source-map',
   '/icon.png',
