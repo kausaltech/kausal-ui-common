@@ -27,6 +27,15 @@ export function initializeMuiTheme(theme: BaseTheme): MuiTheme {
   return {
     ...theme,
     ...createTheme({
+      // MUI's defaults, except:
+      // - md: 768px is the common mobile/desktop switch point (Bootstrap, Tailwind),
+      //   where MUI's 900px collapsed layouts too early;
+      // - xl: 1400px, as Bootstrap's widest step. MUI's 1536px made the widest
+      //   container too wide to lay content out cleanly.
+      // Keep in sync with $grid-breakpoints in styles/_theme-variables.scss.
+      breakpoints: {
+        values: { xs: 0, sm: 600, md: 768, lg: 1200, xl: 1400 },
+      },
       // Shadows are modified from the MUI base theme (https://mui.com/material-ui/customization/default-theme/)
       // simply reducing the opacity
       shadows: [
