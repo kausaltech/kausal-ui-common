@@ -480,6 +480,9 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           borderRadius: theme.cardBorderRadius,
           fontSize: theme.fontSizeSm,
         },
+        arrow: {
+          color: theme.themeColors.black,
+        },
       },
     },
     MuiPopover: {
