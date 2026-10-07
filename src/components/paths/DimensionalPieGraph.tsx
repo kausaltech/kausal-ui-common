@@ -24,7 +24,7 @@ import {
   parseMetric,
 } from '@common/utils/paths/metric';
 
-const PlotsContainer = styled.div`
+const GraphsContainer = styled.div`
   display: flex;
   width: 100%;
   justify-content: center;
@@ -209,7 +209,7 @@ const DimensionalPieGraph = ({
   }, [yearData, metric.unit.htmlShort, colorChange, formatNumber, theme.graphColors.grey050]);
 
   return (
-    <PlotsContainer className="mt-3">
+    <GraphsContainer className="mt-3">
       {pies.map(
         (pie) =>
           pie.total !== 0 && (
@@ -228,7 +228,7 @@ const DimensionalPieGraph = ({
             </Subplot>
           )
       )}
-    </PlotsContainer>
+    </GraphsContainer>
   );
 };
 

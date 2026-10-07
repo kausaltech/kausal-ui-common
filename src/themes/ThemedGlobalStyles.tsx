@@ -286,9 +286,7 @@ const getGlobalStyles = (theme: Theme) => css`
     h6,
     .card,
     .btn,
-    .js-plotly-plot,
-    .plot-container,
-    .plotly,
+    [_echarts_instance_],
     .causal-chain-visualisation {
       break-inside: avoid-page;
     }
