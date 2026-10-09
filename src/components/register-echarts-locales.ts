@@ -13,6 +13,7 @@ import de from 'echarts/i18n/langDE-obj.js';
 import en from 'echarts/i18n/langEN-obj.js';
 import es from 'echarts/i18n/langES-obj.js';
 import fi from 'echarts/i18n/langFI-obj.js';
+import fr from 'echarts/i18n/langFR-obj.js';
 import pl from 'echarts/i18n/langPL-obj.js';
 import ptBr from 'echarts/i18n/langPT-br-obj.js';
 import sv from 'echarts/i18n/langSV-obj.js';
@@ -27,6 +28,8 @@ const localeStrings: Record<string, LocaleOption> = {
   es,
   'es-US': es,
   fi,
+  fr,
+  'fr-CA': fr,
   pl,
   'pt-BR': ptBr,
   sv,
@@ -48,6 +51,8 @@ echarts.registerLocale('de-CH', de);
 echarts.registerLocale('es', es);
 echarts.registerLocale('es-US', es);
 echarts.registerLocale('fi', fi);
+echarts.registerLocale('fr', fr);
+echarts.registerLocale('fr-CA', fr);
 echarts.registerLocale('pl', pl);
 echarts.registerLocale('pt-BR', ptBr);
 echarts.registerLocale('sv', sv);
