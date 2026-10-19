@@ -115,7 +115,6 @@ export type InstanceGoalInput = {
   readonly label: string | null;
   readonly default: boolean;
   readonly disabled: boolean;
-  readonly outcomeNode: { readonly id: string } | null;
   readonly dimensions: readonly {
     readonly dimension: string;
     readonly categories: readonly string[];

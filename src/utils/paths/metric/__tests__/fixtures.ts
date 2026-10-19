@@ -193,7 +193,7 @@ export const emissions = buildMetric({
 
 /** Instance goals, which refer to dimensions and categories by their original ids */
 function makeGoal(id: string, dimensions: InstanceGoalInput['dimensions']): InstanceGoalInput {
-  return { id, label: id, default: false, disabled: false, outcomeNode: null, dimensions };
+  return { id, label: id, default: false, disabled: false, dimensions };
 }
 
 export const goals = {
