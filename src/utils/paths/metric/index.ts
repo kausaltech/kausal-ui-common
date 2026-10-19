@@ -40,12 +40,9 @@ export { parseMetric, filterScenario, ALL_SCENARIOS } from './parse';
 export {
   getName,
   getUnit,
-  getUnitShort,
   overrideUnit,
   type CO2eUnitKey,
-  getForecastFrom,
   getHistoricalYears,
-  getForecastYears,
   isForecastYear,
   getMetricValue,
   getMetricChange,
@@ -60,7 +57,6 @@ export {
   getGroupLabel,
   getSelectableDimensions,
   getOptionsForDimension,
-  getSliceableDims,
 } from './dimensions';
 
 // Goals

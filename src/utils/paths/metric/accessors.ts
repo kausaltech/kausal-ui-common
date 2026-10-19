@@ -15,13 +15,6 @@ export function getUnit(metric: ParsedMetric): string {
   return metric.unit.htmlShort;
 }
 
-/**
- * Get the metric unit (short text).
- */
-export function getUnitShort(metric: ParsedMetric): string {
-  return metric.unit.short;
-}
-
 /** Translated CO2-equivalent units that `overrideUnit` can substitute */
 export type CO2eUnitKey = 'tco2-e-inhabitant' | 'ktco2-e';
 
@@ -46,24 +39,10 @@ export function overrideUnit(
 }
 
 /**
- * Get the year from which forecasts begin.
- */
-export function getForecastFrom(metric: ParsedMetric): number | null {
-  return metric.forecastFrom;
-}
-
-/**
  * Get all historical years (before forecastFrom).
  */
 export function getHistoricalYears(metric: ParsedMetric): readonly number[] {
   return metric.years.filter((year) => (metric.forecastFrom ? year < metric.forecastFrom : true));
-}
-
-/**
- * Get all forecast years (from forecastFrom onwards).
- */
-export function getForecastYears(metric: ParsedMetric): readonly number[] {
-  return metric.years.filter((year) => (metric.forecastFrom ? year >= metric.forecastFrom : false));
 }
 
 /**

@@ -1,11 +1,5 @@
 import { rowMatchesChoice } from './slicing';
-import type {
-  DimensionOption,
-  MetricCategoryChoice,
-  MetricDimension,
-  ParsedMetric,
-  SliceConfig,
-} from './types';
+import type { DimensionOption, MetricCategoryChoice, MetricDimension, ParsedMetric } from './types';
 
 /**
  * Checks if the metric has a matching dimension.
@@ -126,18 +120,4 @@ export function getOptionsForDimension(
     selected: selected.includes(cat.id),
     hasData: withData.has(cat.id),
   }));
-}
-
-/**
- * Get dimensions that can be used for slicing (not already filtered).
- *
- * @param metric - The parsed metric
- * @param selection - Current slice configuration
- * @returns Dimensions available for slicing
- */
-export function getSliceableDims(
-  metric: ParsedMetric,
-  selection: SliceConfig
-): readonly MetricDimension[] {
-  return metric.dimensions.filter((dim) => !selection.categories[dim.id]);
 }
