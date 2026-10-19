@@ -57,6 +57,8 @@ type DimensionalPieGraphProps = {
   endYear: number;
   colorChange?: number;
   instance: InstanceContext;
+  /** Significant digits when the instance sets no number format; see `makeInstanceFormatter` */
+  defaultSignificantDigits?: number;
   t: TFunction;
 };
 
@@ -81,13 +83,14 @@ const DimensionalPieGraph = ({
   endYear,
   colorChange: colorChangeProp = 0,
   instance,
+  defaultSignificantDigits,
   t,
 }: DimensionalPieGraphProps) => {
   const locale = useLocale();
   const formatNumber = useMemo(() => {
-    const formatter = makeInstanceFormatter(locale, instance.features);
+    const formatter = makeInstanceFormatter(locale, instance.features, defaultSignificantDigits);
     return (value: number) => formatWithFormatter(formatter, value);
-  }, [locale, instance.features]);
+  }, [locale, instance.features, defaultSignificantDigits]);
   const theme = useTheme();
   const activeGoal = useReactiveVar(activeGoalVar);
   // The metric may include a scenario dimension (queried `withScenarios`);

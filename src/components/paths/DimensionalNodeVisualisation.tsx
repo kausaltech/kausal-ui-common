@@ -82,6 +82,8 @@ type DimensionalNodeVisualisationProps = {
   /** The active goal, whose dimension choices filter the chart by default */
   activeGoal: InstanceGoalInput | null;
   instance: InstanceContext;
+  /** Significant digits when the instance sets no number format; see `makeInstanceFormatter` */
+  defaultSignificantDigits?: number;
   /** Scenarios, for the baseline and progress tracking lines */
   site?: SiteContext | null;
   labels: NodeVisualisationLabels;
@@ -186,6 +188,7 @@ export default function DimensionalNodeVisualisation({
   separateYears,
   activeGoal,
   instance,
+  defaultSignificantDigits,
   site,
   labels,
   baselineForecast,
@@ -200,9 +203,9 @@ export default function DimensionalNodeVisualisation({
   const theme = useTheme();
   const locale = useLocale();
   const formatValue = useMemo(() => {
-    const formatter = makeInstanceFormatter(locale, instance.features);
+    const formatter = makeInstanceFormatter(locale, instance.features, defaultSignificantDigits);
     return (value: number) => formatWithFormatter(formatter, value);
-  }, [locale, instance.features]);
+  }, [locale, instance.features, defaultSignificantDigits]);
   const formatAxisValue = useMemo(() => {
     const formatter = new Intl.NumberFormat(locale);
     return (value: number) => formatter.format(value);
