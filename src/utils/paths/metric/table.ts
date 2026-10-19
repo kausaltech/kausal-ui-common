@@ -3,8 +3,46 @@ import type { MetricSliceData, TableData, TableLabels } from './types';
 // Re-export the type for convenience
 export type MetricSlice = MetricSliceData;
 
+/** Remove floating point noise from a sum, e.g. 0.1 + 0.2 */
+const cleanSum = (value: number) => parseFloat(value.toPrecision(12));
+
 /**
- * Create a table representation of the slice data.
+ * Create a table of the slice data with a row per category and a column per
+ * year, as the node visualisation exports it.
+ *
+ * @param slice - The slice data
+ * @returns Table data structure
+ */
+export function createCategoryTable(slice: MetricSliceData): TableData {
+  const header = [
+    { key: 'category', label: slice.dimensionLabel },
+    ...[...slice.historicalYears, ...slice.forecastYears].map((year) => ({
+      key: year.toString(),
+      label: year.toString(),
+    })),
+  ];
+  const rows = slice.categoryValues.map((cv) => ({
+    category: cv.category.label,
+    ...Object.fromEntries(
+      slice.historicalYears.map((year, idx) => [year.toString(), cv.historicalValues[idx]])
+    ),
+    ...Object.fromEntries(
+      slice.forecastYears.map((year, idx) => [year.toString(), cv.forecastValues[idx]])
+    ),
+  }));
+
+  return {
+    header,
+    rows,
+    hasTotals: slice.totalValues !== null,
+    forecastFromColumn: slice.forecastYears.length ? 1 + slice.historicalYears.length : null,
+    forecastFromRow: null,
+  };
+}
+
+/**
+ * Create a table of the slice data with a row per year and a column per
+ * category, with a total column.
  *
  * @param slice - The slice data
  * @param years - Specific years to include (defaults to all)
@@ -48,30 +86,28 @@ export function createTable(
     let total = 0;
 
     slice.categoryValues.forEach((cv) => {
-      if (historicalYearIndex >= 0) {
-        const value = cv.historicalValues[historicalYearIndex] ?? null;
-        row[cv.category.id] = value !== null ? parseFloat(value?.toPrecision(2) || '') : NO_VALUE;
-        total += value ?? 0;
-      } else if (forecastYearIndex >= 0) {
-        const value = cv.forecastValues[forecastYearIndex] ?? null;
-        row[cv.category.id] = value !== null ? parseFloat(value?.toPrecision(2) || '') : NO_VALUE;
-        total += value ?? 0;
-      } else {
-        row[cv.category.id] = NO_VALUE;
-      }
+      const value =
+        historicalYearIndex >= 0
+          ? (cv.historicalValues[historicalYearIndex] ?? null)
+          : forecastYearIndex >= 0
+            ? (cv.forecastValues[forecastYearIndex] ?? null)
+            : null;
+      row[cv.category.id] = value ?? NO_VALUE;
+      total += value ?? 0;
     });
 
-    row.total = parseFloat(total.toPrecision(2) || '') ?? NO_VALUE;
+    row.total = cleanSum(total);
     row.type = historicalYearIndex >= 0 ? viewHistoricalLabel : viewForecastLabel;
     return row;
   });
 
-  const forecastFromColumn = 1 + slice.historicalYears.length;
+  const forecastFromRow = useYears.findIndex((year) => slice.forecastYears.includes(year));
 
   return {
     header,
     rows,
     hasTotals: slice.totalValues !== null,
-    forecastFromColumn,
+    forecastFromColumn: null,
+    forecastFromRow: forecastFromRow >= 0 ? forecastFromRow : null,
   };
 }

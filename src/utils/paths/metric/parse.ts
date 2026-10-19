@@ -8,6 +8,9 @@ import type {
   ParsedMetric,
 } from './types';
 
+/** Keeps every scenario in `parseMetric`, including the scenario dimension */
+export const ALL_SCENARIOS = 'ALL_SCENARIOS';
+
 function isScenarioDim(dim: MetricDimensionInput) {
   return dim.id.endsWith(':scenario:ScenarioName');
 }
@@ -86,8 +89,15 @@ function createRows(
 /**
  * Parses a DimensionalMetric into a processed ParsedMetric.
  * This is the main entry point for creating the data structure.
+ *
+ * A metric queried `withScenarios` has a scenario dimension. Only the given
+ * scenario is kept and the dimension dropped (see `filterScenario`), unless
+ * `scenarioId` is `ALL_SCENARIOS`. Parse the metric once per scenario to
+ * compare scenarios.
  */
-export function parseMetric(data: MetricInput): ParsedMetric {
+export function parseMetric(input: MetricInput, scenarioId: string = 'default'): ParsedMetric {
+  const data = scenarioId === ALL_SCENARIOS ? input : filterScenario(input, scenarioId);
+
   // Enhance dimensions with resolved groups
   const dimensions: MetricDimension[] = data.dimensions.map((dimIn) => {
     const groups: MetricCategoryGroup[] = dimIn.groups.map((grpIn) => ({

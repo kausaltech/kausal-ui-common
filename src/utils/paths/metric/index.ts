@@ -30,10 +30,11 @@ export type {
   TableData,
   TableLabels,
   ExportOptions,
+  DimensionOption,
 } from './types';
 
 // Parse
-export { parseMetric, filterScenario } from './parse';
+export { parseMetric, filterScenario, ALL_SCENARIOS } from './parse';
 
 // Accessors
 export {
@@ -51,7 +52,15 @@ export {
 } from './accessors';
 
 // Dimensions
-export { hasDimension, getOptionsForDimension, getSliceableDims } from './dimensions';
+export {
+  hasDimension,
+  getDimensionLabel,
+  getCategoryLabel,
+  getGroupLabel,
+  getSelectableDimensions,
+  getOptionsForDimension,
+  getSliceableDims,
+} from './dimensions';
 
 // Goals
 export { getGoalsForChoice, getChoicesForGoal } from './goals';
@@ -60,13 +69,13 @@ export { getGoalsForChoice, getChoicesForGoal } from './goals';
 export { getDefaultSliceConfig, updateChoice } from './config';
 
 // Slicing
-export { sliceBy, flatten, getSingleYear } from './slicing';
+export { sliceBy, flatten, getSingleYear, type SliceOptions } from './slicing';
 
 // Export
 export { downloadData } from './export';
 
 // Table utilities
-export { createTable, type MetricSlice } from './table';
+export { createTable, createCategoryTable, type MetricSlice } from './table';
 
 // Chart utilities
 export { getFilteredYears } from './chart';

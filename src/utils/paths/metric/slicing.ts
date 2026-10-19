@@ -11,9 +11,10 @@ import type {
 } from './types';
 
 /**
- * Check if a row matches the given category choice filters.
+ * Check if a row matches the given category choice filters. An empty
+ * category list doesn't filter.
  */
-function rowMatchesChoice(row: MetricRow, categoryChoice: MetricCategoryChoice): boolean {
+export function rowMatchesChoice(row: MetricRow, categoryChoice: MetricCategoryChoice): boolean {
   const noMatch = Object.entries(categoryChoice).some(([dimId, choice]) => {
     if (!choice) return false;
     if (choice.categories.length === 0) return false;
@@ -23,6 +24,18 @@ function rowMatchesChoice(row: MetricRow, categoryChoice: MetricCategoryChoice):
   return !noMatch;
 }
 
+export type SliceOptions = {
+  /** Specific years to include (defaults to all) */
+  readonly years?: readonly number[];
+  /**
+   * Drop categories whose values are all zero or missing (the default). With
+   * `false`, a category is kept when it has at least one value, zero
+   * included, and dropped only when it has no data at all: a category
+   * reported as zero then still shows in the legend and tooltip.
+   */
+  readonly filterZero?: boolean;
+};
+
 /**
  * Slice data by a dimension, grouping values by category.
  *
@@ -30,9 +43,10 @@ function rowMatchesChoice(row: MetricRow, categoryChoice: MetricCategoryChoice):
  * @param dimensionId - Dimension to group by
  * @param sort - Whether to sort by latest value
  * @param categoryChoice - Category filters to apply
- * @param useGroups - Whether to use groups instead of categories
- * @param years - Specific years to include (defaults to all)
- * @returns Sliced data or null if no matching categories
+ * @param useGroups - Whether to slice a grouped dimension by its groups. The
+ *   categories inside groups are not shown to users, so they stay grouped
+ *   also when the dimension is filtered.
+ * @returns Sliced data, or null if the metric has no such dimension
  */
 export function sliceBy(
   metric: ParsedMetric,
@@ -40,28 +54,18 @@ export function sliceBy(
   sort: boolean = false,
   categoryChoice: MetricCategoryChoice | undefined,
   useGroups: boolean = true,
-  years?: readonly number[]
+  options: SliceOptions = {}
 ): MetricSliceData | null {
+  const { years, filterZero = true } = options;
   const byYear = new Map<number, Map<string, number>>();
+  // Categories (or groups) with at least one non-null value. A per-year sum
+  // starts from 0, so the sums alone cannot tell "reported as 0" from "no data".
+  const idsWithValue = new Set<string>();
   const dim = metric.dimensions.find((d) => d.id === dimensionId);
   if (!dim) return null;
 
-  // If categoryChoice has empty categories array for this dimension, return null
-  if (categoryChoice && categoryChoice[dim.id]?.categories.length === 0) {
-    return null;
-  }
-
   const yearsToUse = years ?? metric.years;
-
-  // Determine if we should use groups
-  let effectiveUseGroups = useGroups;
-  if (dim.groups.length) {
-    if (categoryChoice?.[dim.id]) {
-      effectiveUseGroups = false;
-    }
-  } else {
-    effectiveUseGroups = false;
-  }
+  const effectiveUseGroups = useGroups && dim.groups.length > 0;
 
   // Process all rows
   metric.rows.forEach((row) => {
@@ -82,7 +86,10 @@ export function sliceBy(
     const rowId = effectiveUseGroups ? cat.group! : cat.id;
     let val = catVals.get(rowId) ?? 0;
     const rowVal = row.value;
-    if (rowVal !== null) val += rowVal;
+    if (rowVal !== null) {
+      val += rowVal;
+      idsWithValue.add(rowId);
+    }
     catVals.set(rowId, val);
   });
 
@@ -149,12 +156,11 @@ export function sliceBy(
         color: cat.color,
       };
     })
-    .filter((cv) => {
-      const hasVals = [...cv.historicalValues, ...cv.forecastValues].some(
-        (val) => val !== null && val !== 0
-      );
-      return hasVals;
-    });
+    .filter((cv) =>
+      filterZero
+        ? [...cv.historicalValues, ...cv.forecastValues].some((val) => val !== null && val !== 0)
+        : idsWithValue.has(cv.category.id)
+    );
 
   const historicalYears = yearsToUse.filter((year) => !isForecastYear(metric, year));
   const forecastYears = yearsToUse.filter((year) => isForecastYear(metric, year));

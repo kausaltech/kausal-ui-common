@@ -195,6 +195,17 @@ export type MetricCategoryChoice = {
 };
 
 /**
+ * A category or group of a dimension, as a filter option.
+ */
+export type DimensionOption = {
+  readonly id: string;
+  readonly label: string;
+  readonly selected: boolean;
+  /** Whether it has data with the filters of the other dimensions applied */
+  readonly hasData: boolean;
+};
+
+/**
  * Configuration for slicing/grouping data.
  */
 export type SliceConfig = {
@@ -255,7 +266,10 @@ export type TableData = {
   readonly header: readonly { readonly key: string; readonly label: string }[];
   readonly rows: readonly { readonly [key: string]: string | number | null }[];
   readonly hasTotals: boolean;
-  readonly forecastFromColumn: number;
+  /** The first forecast column, when years are columns */
+  readonly forecastFromColumn: number | null;
+  /** The first forecast row (0 is the first data row), when years are rows */
+  readonly forecastFromRow: number | null;
 };
 
 /**
@@ -274,7 +288,17 @@ export type TableLabels = {
  * Export options.
  */
 export type ExportOptions = {
+  /** Specific years to include (defaults to all) */
   readonly years?: readonly number[];
+  /** Names the file, and titles a table with a row per year */
   readonly tableTitle?: string;
+  /** Header labels of a table with a row per year */
   readonly labels?: TableLabels;
+  /** As in `sliceBy`; pass the chart's value so the export matches it */
+  readonly filterZero?: boolean;
+  /**
+   * `categories` (the default): a row per category and a column per year.
+   * `years`: a row per year and a column per category, with a total column.
+   */
+  readonly layout?: 'categories' | 'years';
 };
