@@ -42,6 +42,7 @@ export {
   getUnit,
   getUnitShort,
   overrideUnit,
+  type CO2eUnitKey,
   getForecastFrom,
   getHistoricalYears,
   getForecastYears,

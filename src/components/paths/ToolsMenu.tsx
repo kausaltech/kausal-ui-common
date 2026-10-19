@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { type RefObject, useState } from 'react';
 
 import {
+  Alert,
   IconButton,
   ListItemIcon,
   ListItemText,
   ListSubheader,
   Menu,
   MenuItem,
+  Snackbar,
 } from '@mui/material';
 
-import { FiletypeCsv, FiletypeXls, ThreeDotsVertical } from 'react-bootstrap-icons';
+import { kebabCase } from 'lodash-es';
+import { FiletypeCsv, FiletypePng, FiletypeXls, ThreeDotsVertical } from 'react-bootstrap-icons';
 
-import type { TFunction } from '@common/i18n';
+import type { ChartHandle } from '@common/components/Chart';
 import styled from '@common/themes/styled';
 import { type ParsedMetric, type SliceConfig, downloadData } from '@common/utils/paths/metric';
 
@@ -30,22 +33,69 @@ const Tools = styled.div`
   }
 `;
 
+/** Translated labels of the tools menu */
+export type ToolsMenuLabels = {
+  /** "Download", the menu's name */
+  downloadData: string;
+  /** Shown when the chart image could not be created */
+  downloadError: string;
+};
+
+const downloadChartAsPng = (dataUrl: string, filename: string) => {
+  const safeName = kebabCase(filename) || 'chart';
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = `${safeName}.png`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 type ToolsMenuProps = {
   cube: ParsedMetric;
   sliceConfig: SliceConfig;
-  t: TFunction;
+  chartRef: RefObject<ChartHandle | null>;
+  pngFilename: string;
+  /** As in `sliceBy`; the download follows the chart */
+  filterZero: boolean;
+  labels: ToolsMenuLabels;
 };
 
-export default function ToolsMenu({ cube, sliceConfig, t }: ToolsMenuProps) {
+/** Downloads of a node chart: its data as XLS or CSV, and the chart as PNG */
+export default function ToolsMenu({
+  cube,
+  sliceConfig,
+  chartRef,
+  pngFilename,
+  filterZero,
+  labels,
+}: ToolsMenuProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const open = Boolean(anchorEl);
-
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleDownload = (format: 'xlsx' | 'csv') => {
+    void downloadData(cube, sliceConfig, format, { filterZero });
+    handleClose();
+  };
+
+  const handleDownloadPng = () => {
+    const dataUrl = chartRef.current?.getDataURL({
+      type: 'png',
+      pixelRatio: 2,
+      backgroundColor: '#fff',
+    });
+    if (dataUrl) {
+      downloadChartAsPng(dataUrl, pngFilename);
+    } else {
+      setErrorMessage(labels.downloadError);
+    }
+    handleClose();
   };
 
   return (
@@ -55,8 +105,8 @@ export default function ToolsMenu({ cube, sliceConfig, t }: ToolsMenuProps) {
         aria-controls={open ? 'tools-menu' : undefined}
         aria-haspopup="true"
         aria-expanded={open ? 'true' : undefined}
-        onClick={handleClick}
-        aria-label={t('download-data')}
+        onClick={(event) => setAnchorEl(event.currentTarget)}
+        aria-label={labels.downloadData}
       >
         <ThreeDotsVertical />
       </IconButton>
@@ -69,20 +119,36 @@ export default function ToolsMenu({ cube, sliceConfig, t }: ToolsMenuProps) {
         onClose={handleClose}
         slotProps={{ list: { 'aria-labelledby': 'tools-button' } }}
       >
-        <ListSubheader>{` ${t('download-data')}`}</ListSubheader>
-        <MenuItem onClick={() => void downloadData(cube, sliceConfig, 'xlsx')}>
+        <ListSubheader>{` ${labels.downloadData}`}</ListSubheader>
+        <MenuItem onClick={() => handleDownload('xlsx')}>
           <ListItemIcon>
             <FiletypeXls />
           </ListItemIcon>
           <ListItemText>XLS</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => void downloadData(cube, sliceConfig, 'csv')}>
+        <MenuItem onClick={() => handleDownload('csv')}>
           <ListItemIcon>
             <FiletypeCsv />
           </ListItemIcon>
           <ListItemText>CSV</ListItemText>
         </MenuItem>
+        <MenuItem onClick={handleDownloadPng}>
+          <ListItemIcon>
+            <FiletypePng />
+          </ListItemIcon>
+          <ListItemText>PNG</ListItemText>
+        </MenuItem>
       </Menu>
+      <Snackbar
+        open={errorMessage !== null}
+        autoHideDuration={4000}
+        onClose={() => setErrorMessage(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setErrorMessage(null)}>
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </Tools>
   );
 }

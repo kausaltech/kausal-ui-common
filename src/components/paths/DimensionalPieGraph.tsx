@@ -120,7 +120,7 @@ const DimensionalPieGraph = ({
     [parsedMetric, endYear, sliceConfig]
   );
 
-  const longUnit = overrideUnit(parsedMetric, metric.unit, t);
+  const longUnit = overrideUnit(parsedMetric, metric.unit, (key) => t.raw(key) as string);
 
   const pies: Pie[] = useMemo(() => {
     const unit = sanitizeHtmlUnit(metric.unit.htmlShort);
