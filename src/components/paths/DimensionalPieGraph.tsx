@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 
 import { useReactiveVar } from '@apollo/client/react';
-import type { DimensionalNodeMetricFragment } from '@generated/paths/graphql';
 import chroma from 'chroma-js';
 import type { EChartsCoreOption } from 'echarts/core';
 import { isEqual } from 'lodash-es';
@@ -15,8 +14,8 @@ import type { TFunction } from '@common/i18n';
 import { useTheme } from '@common/themes';
 import { formatWithFormatter, makeInstanceFormatter, sanitizeHtmlUnit } from '@common/utils/format';
 import {
+  type MetricInput,
   type SliceConfig,
-  filterScenario,
   getDefaultSliceConfig,
   getSingleYear,
   isForecastYear,
@@ -43,7 +42,7 @@ const MAX_OUTER_RADIUS = 65;
 // Donut hole, as a fraction of the outer radius
 const HOLE_RATIO = 0.5;
 
-type MetricDim = NonNullable<DimensionalNodeMetricFragment['metricDim']>;
+type MetricDim = MetricInput;
 
 type InstanceContext = {
   features?: {
@@ -57,6 +56,8 @@ type DimensionalPieGraphProps = {
   endYear: number;
   colorChange?: number;
   instance: InstanceContext;
+  /** Significant digits when the instance sets no number format; see `makeInstanceFormatter` */
+  defaultSignificantDigits?: number;
   t: TFunction;
 };
 
@@ -81,19 +82,18 @@ const DimensionalPieGraph = ({
   endYear,
   colorChange: colorChangeProp = 0,
   instance,
+  defaultSignificantDigits,
   t,
 }: DimensionalPieGraphProps) => {
   const locale = useLocale();
   const formatNumber = useMemo(() => {
-    const formatter = makeInstanceFormatter(locale, instance.features);
+    const formatter = makeInstanceFormatter(locale, instance.features, defaultSignificantDigits);
     return (value: number) => formatWithFormatter(formatter, value);
-  }, [locale, instance.features]);
+  }, [locale, instance.features, defaultSignificantDigits]);
   const theme = useTheme();
   const activeGoal = useReactiveVar(activeGoalVar);
-  // The metric may include a scenario dimension (queried `withScenarios`);
-  // this view shows a single-scenario distribution, so collapse it to the
-  // default scenario before parsing.
-  const parsedMetric = useMemo(() => parseMetric(filterScenario(metric)), [metric]);
+  // Parsing keeps the default scenario of a metric queried `withScenarios`
+  const parsedMetric = useMemo(() => parseMetric(metric), [metric]);
   const isForecast = isForecastYear(parsedMetric, endYear);
   const defaultConfig = getDefaultSliceConfig(parsedMetric, activeGoal);
   const [sliceConfig, setSliceConfig] = useState<SliceConfig>(defaultConfig);
@@ -120,7 +120,7 @@ const DimensionalPieGraph = ({
     [parsedMetric, endYear, sliceConfig]
   );
 
-  const longUnit = overrideUnit(parsedMetric, metric.unit, t);
+  const longUnit = overrideUnit(parsedMetric, metric.unit, (key) => t.raw(key) as string);
 
   const pies: Pie[] = useMemo(() => {
     const unit = sanitizeHtmlUnit(metric.unit.htmlShort);

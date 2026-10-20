@@ -46,19 +46,21 @@ type NumberFormatFeatures =
 
 /**
  * Creates a formatter from paths instance feature settings.
- * Falls back to DEFAULT_SIGNIFICANT_DIGITS when the instance configures neither
- * significant digits nor fraction digits.
+ * Falls back to `defaultSignificantDigits` when the instance configures
+ * neither significant digits nor fraction digits; apps differ in their
+ * default, e.g. paths-ui uses 3.
  */
 export function makeInstanceFormatter(
   locale: string,
-  features: NumberFormatFeatures
+  features: NumberFormatFeatures,
+  defaultSignificantDigits: number = DEFAULT_SIGNIFICANT_DIGITS
 ): { format: (value: number) => string } {
   const significantDigits = features?.showSignificantDigits ?? undefined;
   const fractionDigits = features?.maximumFractionDigits ?? undefined;
   return makeFormatter(
     locale,
     significantDigits ??
-      (typeof fractionDigits === 'number' ? undefined : DEFAULT_SIGNIFICANT_DIGITS),
+      (typeof fractionDigits === 'number' ? undefined : defaultSignificantDigits),
     fractionDigits
   );
 }

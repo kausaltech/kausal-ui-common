@@ -1,5 +1,3 @@
-import type { TFunction } from '@common/i18n';
-
 import { hasDimension } from './dimensions';
 import type { NodeMetricInput, ParsedMetric } from './types';
 
@@ -17,40 +15,27 @@ export function getUnit(metric: ParsedMetric): string {
   return metric.unit.htmlShort;
 }
 
-/**
- * Get the metric unit (short text).
- */
-export function getUnitShort(metric: ParsedMetric): string {
-  return metric.unit.short;
-}
+/** Translated CO2-equivalent units that `overrideUnit` can substitute */
+export type CO2eUnitKey = 'tco2-e-inhabitant' | 'ktco2-e';
 
 /**
- * Get the long HTML unit for display, overriding it for known emission units.
+ * The unit to show for a metric: its short HTML unit, or a CO2-equivalent
+ * unit for emission metrics whose gases have already been summed up.
+ *
+ * @param getUnitLabel - The translated (HTML) unit for a key
  */
 export function overrideUnit(
   metric: ParsedMetric,
   unit: { htmlShort: string; htmlLong?: string | null; short?: string | null },
-  t: TFunction
+  getUnitLabel: (key: CO2eUnitKey) => string
 ): string {
-  let longUnit = unit.htmlShort;
   // FIXME: Nasty hack to show 'CO2e' where it might be applicable until
   // the backend gets proper support for unit specifiers.
-  // t∕(Einw.·a)
   if (hasDimension(metric, 'emission_scope') && !hasDimension(metric, 'greenhouse_gases')) {
-    if (unit.short === 't/Einw./a') {
-      longUnit = t.raw('tco2-e-inhabitant') as string;
-    } else if (unit.short === 'kt/a') {
-      longUnit = t.raw('ktco2-e') as string;
-    }
+    if (unit.short === 't/Einw./a') return getUnitLabel('tco2-e-inhabitant');
+    if (unit.short === 'kt/a') return getUnitLabel('ktco2-e');
   }
-  return longUnit;
-}
-
-/**
- * Get the year from which forecasts begin.
- */
-export function getForecastFrom(metric: ParsedMetric): number | null {
-  return metric.forecastFrom;
+  return unit.htmlShort;
 }
 
 /**
@@ -58,13 +43,6 @@ export function getForecastFrom(metric: ParsedMetric): number | null {
  */
 export function getHistoricalYears(metric: ParsedMetric): readonly number[] {
   return metric.years.filter((year) => (metric.forecastFrom ? year < metric.forecastFrom : true));
-}
-
-/**
- * Get all forecast years (from forecastFrom onwards).
- */
-export function getForecastYears(metric: ParsedMetric): readonly number[] {
-  return metric.years.filter((year) => (metric.forecastFrom ? year >= metric.forecastFrom : false));
 }
 
 /**

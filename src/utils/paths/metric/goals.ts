@@ -54,7 +54,7 @@ export function getChoicesForGoal(
 
   matchingDims.forEach((gdim) => {
     const metricDim = metricDims.get(gdim.dimension)!;
-    let out: CatDimChoice | undefined;
+    let out: CatDimChoice;
 
     if (gdim.groups) {
       const grpMap = new Map<string, MetricCategoryGroup>(
@@ -82,7 +82,9 @@ export function getChoicesForGoal(
       };
     }
 
-    if (out) choice[metricDim.id] = out;
+    // An empty choice would still mark the dimension as filtered (and thus
+    // unsliceable) without actually filtering anything, so skip it.
+    if (out.categories.length) choice[metricDim.id] = out;
   });
 
   return choice;

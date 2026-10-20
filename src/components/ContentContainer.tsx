@@ -40,6 +40,52 @@ export function containerMaxWidthStyles(
   );
 }
 
+/**
+ * Lines an element up with `ContentContainer`, for markup that can't use it,
+ * such as a header styled by a design system's own stylesheet. The gutters are
+ * the theme's `MuiContainer` override.
+ */
+export function contentContainerStyles(
+  theme: Theme & { spaces: { s100: string; s200: string } },
+  options: ContainerMaxWidthOptions = {}
+) {
+  return {
+    boxSizing: 'border-box' as const,
+    width: 'auto',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    paddingLeft: theme.spaces.s100,
+    paddingRight: theme.spaces.s100,
+    [theme.breakpoints.up('sm')]: {
+      paddingLeft: theme.spaces.s200,
+      paddingRight: theme.spaces.s200,
+    },
+    ...containerMaxWidthStyles(theme, options),
+  };
+}
+
+/**
+ * The distance from the left edge of a full-width element to the content of
+ * `ContentContainer`, at each breakpoint: for lining up content inside
+ * full-width bars. `toStyles` turns an inset into the styles to apply.
+ */
+export function contentContainerInsetStyles(
+  theme: Theme & { spaces: { s100: string; s200: string } },
+  toStyles: (inset: string) => Record<string, string>
+) {
+  const { values, unit } = theme.breakpoints;
+  return {
+    ...toStyles(theme.spaces.s100),
+    [theme.breakpoints.up('sm')]: toStyles(theme.spaces.s200),
+    ...Object.fromEntries(
+      CONTAINER_CAPS.map((bp) => [
+        theme.breakpoints.up(bp),
+        toStyles(`calc((100% - ${values[bp]}${unit}) / 2 + ${theme.spaces.s200})`),
+      ])
+    ),
+  };
+}
+
 const ContainerRoot = styled(MuiContainer, {
   shouldForwardProp: (prop) => prop !== '$upTo',
 })<{ $upTo: ContentContainerMaxWidth }>(({ theme, $upTo }) =>

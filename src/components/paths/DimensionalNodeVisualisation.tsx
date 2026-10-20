@@ -1,41 +1,46 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type SetStateAction, useCallback, useMemo, useRef, useState } from 'react';
 
 import { Box } from '@mui/material';
 
-import { useReactiveVar } from '@apollo/client/react';
-import type { DimensionalNodeMetricFragment, ScenarioKind } from '@generated/paths/graphql';
 import chroma from 'chroma-js';
 import { useLocale } from 'next-intl';
 
-import { activeGoalVar } from '@common/apollo/paths-cache';
-import type { TFunction } from '@common/i18n';
+import type { ChartHandle } from '@common/components/Chart';
 import { useTheme } from '@common/themes';
 import { formatWithFormatter, makeInstanceFormatter } from '@common/utils/format';
 import { genColorsFromTheme, setUniqueColors } from '@common/utils/paths/colors';
 import {
-  type MetricCategoryChoice,
-  type MetricCategoryValues,
-  type MetricSlice,
+  type CO2eUnitKey,
+  type InstanceGoalInput,
+  type MetricInput,
+  type MetricSliceData,
+  type ParsedMetric,
   type SliceConfig,
   flatten,
+  getCategoryLabel,
   getDefaultSliceConfig,
+  getDimensionLabel,
   getFilteredYears,
   getGoalsForChoice,
+  getGroupLabel,
+  getOptionsForDimension,
   overrideUnit,
   parseMetric,
   sliceBy,
+  updateChoice,
 } from '@common/utils/paths/metric';
 import {
+  type SiteContextType,
   getProgressTrackingScenario,
   metricHasProgressTrackingScenario,
 } from '@common/utils/paths/progress-tracking';
 
-import DimensionControls from './DimensionControls';
-import NodeGraph from './NodeGraph';
-import ToolsMenu from './ToolsMenu';
+import DimensionControls, { type DimensionControlsLabels } from './DimensionControls';
+import NodeGraph, { type NodeGraphLabels } from './NodeGraph';
+import ToolsMenu, { type ToolsMenuLabels } from './ToolsMenu';
 
-type MetricDim = NonNullable<DimensionalNodeMetricFragment['metricDim']> & {
-  measureDatapointYears?: number[] | null;
+type MetricDim = MetricInput & {
+  measureDatapointYears?: readonly number[] | null;
 };
 
 type BaselineForecast = { year: number; value: number };
@@ -47,266 +52,272 @@ type InstanceContext = {
     baselineVisibleInGraphs?: boolean | null;
     maximumFractionDigits?: number | null;
     showSignificantDigits?: number | null;
+    /** Keep categories reported as zero in the chart, legend and tooltip */
+    showZerosInGraphs?: boolean | null;
   } | null;
 };
 
-type SiteScenario = {
-  id: string;
-  kind: ScenarioKind;
-  actualHistoricalYears?: number[] | null;
+type SiteContext = SiteContextType & {
+  baselineName?: string | null;
 };
 
-type SiteContext = {
-  scenarios: SiteScenario[];
-  baselineName?: string | null;
-  minYear: number;
+/** Translated labels of the visualisation, its controls and tools */
+export type NodeVisualisationLabels = {
+  graph: NodeGraphLabels;
+  /** The label of forecast values, e.g. "pred" or "Planned" */
+  prediction: string;
+  controls: DimensionControlsLabels;
+  tools: ToolsMenuLabels;
+  /** CO2-equivalent units, as HTML; see `overrideUnit` */
+  units: Record<CO2eUnitKey, string>;
 };
 
 type DimensionalNodeVisualisationProps = {
   title: string | null | undefined;
-  baselineForecast?: BaselineForecast[];
   metric: MetricDim;
   startYear: number;
   endYear: number;
+  /** Show exactly these years instead of the range, e.g. to compare two years */
   separateYears?: number[] | null;
+  /** The active goal, whose dimension choices filter the chart by default */
+  activeGoal: InstanceGoalInput | null;
   instance: InstanceContext;
+  /** Significant digits when the instance sets no number format; see `makeInstanceFormatter` */
+  defaultSignificantDigits?: number;
+  /** Scenarios, for the baseline and progress tracking lines */
   site?: SiteContext | null;
+  labels: NodeVisualisationLabels;
+  baselineForecast?: BaselineForecast[];
   withControls?: boolean;
   withTools?: boolean;
   color?: string | null;
+  /** Brighten (positive) or darken (negative) the series colors */
   colorAdjust?: number;
   onClickMeasuredEmissions?: (year: number) => void;
   forecastTitle?: string;
   chartType?: 'bar' | 'line' | 'area';
-  t: TFunction;
 };
 
+/** The labels of the categories (or groups) the slice config filters by, per dimension */
+function getActiveFilterLabels(metric: ParsedMetric, sliceConfig: SliceConfig) {
+  const out: { dimension: string; categories: string[] }[] = [];
+  for (const [dimId, choice] of Object.entries(sliceConfig.categories)) {
+    if (!choice?.categories.length) continue;
+    // For grouped dimensions, show the selected groups rather than their expanded categories
+    out.push({
+      dimension: getDimensionLabel(metric, dimId) ?? '',
+      categories: choice.groups?.length
+        ? choice.groups.map((grp) => getGroupLabel(metric, dimId, grp) ?? '')
+        : choice.categories.map((cat) => getCategoryLabel(metric, cat) ?? ''),
+    });
+  }
+  return out;
+}
+
+/**
+ * Progress tracking values: the total of the progress tracking scenario for
+ * the years with measured data, starting from the reference year.
+ */
+function getProgressValues(
+  progressMetric: ParsedMetric,
+  slice: MetricSliceData,
+  slicedDimId: string,
+  sliceConfig: SliceConfig,
+  metric: MetricDim,
+  instance: InstanceContext,
+  site: SiteContext
+) {
+  const progressScenario = getProgressTrackingScenario(site.scenarios);
+  const progressSlice = sliceBy(progressMetric, slicedDimId, true, sliceConfig.categories);
+  if (!progressSlice?.totalValues) return null;
+
+  // Only years where this specific metric has measured data
+  const measureDatapointYears = metric.measureDatapointYears ?? [];
+  const progressYears =
+    progressScenario?.actualHistoricalYears?.filter(
+      (year) =>
+        year !== instance.referenceYear &&
+        measureDatapointYears.includes(year) &&
+        year !== site.minYear
+    ) ?? [];
+  if (!progressYears.length) return null;
+
+  const referenceYearIndex = slice.historicalYears.findIndex(
+    (year) => year === instance.referenceYear
+  );
+  const historicalYears =
+    referenceYearIndex !== -1
+      ? progressSlice.historicalYears.slice(referenceYearIndex + 1)
+      : progressSlice.historicalYears;
+  const historicalValues =
+    referenceYearIndex !== -1
+      ? progressSlice.totalValues.historicalValues.slice(referenceYearIndex + 1)
+      : progressSlice.totalValues.historicalValues;
+
+  const lastHist = slice.historicalYears.length - 1;
+  const totalSumX = [site.minYear, ...historicalYears, ...progressSlice.forecastYears];
+  const totalSumY = [
+    slice.totalValues?.historicalValues[lastHist] ?? 0,
+    ...historicalValues,
+    ...progressSlice.totalValues.forecastValues,
+  ];
+
+  // Keep the reference year, to draw a line from the total reference year
+  // emissions to the first observed year emissions
+  const years: number[] = [];
+  const values: number[] = [];
+  totalSumX.forEach((year, idx) => {
+    const value = totalSumY[idx];
+    if ([instance.referenceYear, ...progressYears].includes(year) && value !== null) {
+      years.push(year);
+      values.push(value);
+    }
+  });
+  return { years, values };
+}
+
+/**
+ * A node's dimensional metric as a chart, with controls to break it down by
+ * and filter its dimensions, and a menu to download the data and the chart.
+ */
 export default function DimensionalNodeVisualisation({
   title,
   metric,
   startYear,
   endYear,
   separateYears,
+  activeGoal,
+  instance,
+  defaultSignificantDigits,
+  site,
+  labels,
+  baselineForecast,
   withControls = true,
   withTools = true,
-  baselineForecast,
   color,
   colorAdjust,
   onClickMeasuredEmissions,
   forecastTitle,
   chartType = 'bar',
-  instance,
-  site,
-  t,
 }: DimensionalNodeVisualisationProps) {
-  const activeGoal = useReactiveVar(activeGoalVar);
   const theme = useTheme();
   const locale = useLocale();
   const formatValue = useMemo(() => {
-    const formatter = makeInstanceFormatter(locale, instance.features);
+    const formatter = makeInstanceFormatter(locale, instance.features, defaultSignificantDigits);
     return (value: number) => formatWithFormatter(formatter, value);
-  }, [locale, instance.features]);
+  }, [locale, instance.features, defaultSignificantDigits]);
+  const formatAxisValue = useMemo(() => {
+    const formatter = new Intl.NumberFormat(locale);
+    return (value: number) => formatter.format(value);
+  }, [locale]);
+
   const scenarios = site?.scenarios ?? [];
   const hasProgressTracking = metricHasProgressTrackingScenario(metric, scenarios);
+  const metrics = useMemo(
+    () => ({
+      default: parseMetric(metric),
+      progress: hasProgressTracking ? parseMetric(metric, 'progress_tracking') : null,
+    }),
+    [metric, hasProgressTracking]
+  );
+  const parsedMetric = metrics.default;
 
-  const parsedMetric = useMemo(() => parseMetric(metric), [metric]);
-
-  // Slice config defines the dimension (dimensionId) and categories (categories[]) we are currently visualizing
-  // Slice config is affected by the active goal and user selections
-  const defaultConfig = getDefaultSliceConfig(parsedMetric, activeGoal);
-  const [sliceConfig, setSliceConfig] = useState<SliceConfig>(defaultConfig);
-
-  useEffect(() => {
-    /**
-     * If the active goal changes, we will reset the grouping + filtering
-     * to be compatible with the new choices (if the new goal has common
-     * dimensions with our metric).
-     */
-    if (!activeGoal) return;
-    const newDefault = getDefaultSliceConfig(parsedMetric, activeGoal);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSliceConfig(newDefault);
-  }, [activeGoal, parsedMetric]);
-
-  const activeDimensionLabel = sliceConfig.dimensionId
-    ? (parsedMetric.dimsById.get(sliceConfig.dimensionId)?.label ?? null)
-    : null;
-
-  // If we have category filters active, let's add them to the viz subtitle
-  // Groups trump categories, so we check for groups first
-  const activeCategoryLabels: {
-    dimension: string;
-    categories: string[];
-    showDimension: boolean;
-  }[] = [];
-  for (const [key, value] of Object.entries(sliceConfig.categories)) {
-    const dim = parsedMetric.dimsById.get(key);
-    if (value?.groups?.length) {
-      activeCategoryLabels.push({
-        dimension: dim?.label ?? '',
-        categories: value.groups.map((groupId) => dim?.groupsById.get(groupId)?.label ?? ''),
-        showDimension: false,
+  // The dimension to break down by and the category filters. They start from
+  // the defaults for the active goal, and reset to them when the metric or the
+  // goal changes.
+  const sliceConfigKey = `${metric.id}:${activeGoal?.id ?? ''}`;
+  const defaultConfig = useMemo(
+    () => getDefaultSliceConfig(parsedMetric, activeGoal),
+    [parsedMetric, activeGoal]
+  );
+  const [storedSliceConfig, setStoredSliceConfig] = useState<{
+    key: string;
+    config: SliceConfig;
+  }>(() => ({ key: sliceConfigKey, config: defaultConfig }));
+  const sliceConfig =
+    storedSliceConfig.key === sliceConfigKey ? storedSliceConfig.config : defaultConfig;
+  const setSliceConfig = useCallback(
+    (update: SetStateAction<SliceConfig>) => {
+      setStoredSliceConfig((current) => {
+        const currentConfig = current.key === sliceConfigKey ? current.config : defaultConfig;
+        const config = typeof update === 'function' ? update(currentConfig) : update;
+        return { key: sliceConfigKey, config };
       });
-    } else if (value?.categories?.length) {
-      activeCategoryLabels.push({
-        dimension: dim?.label ?? '',
-        categories: value.categories.map((catId) => {
-          for (const d of parsedMetric.dimensions) {
-            const found = d.categories.find((c) => c.id === catId);
-            if (found) return found.label;
-          }
-          return '';
-        }),
-        showDimension: true,
-      });
-    }
-  }
+    },
+    [defaultConfig, sliceConfigKey]
+  );
 
-  const subtitle = activeCategoryLabels
-    .map((dim) =>
-      dim.showDimension
-        ? `${dim.dimension}: ${dim.categories.join(' & ')}`
-        : dim.categories.join(' & ')
-    )
+  const activeDimensionLabel = getDimensionLabel(parsedMetric, sliceConfig.dimensionId);
+  // Active filters go to the chart subtitle
+  const subtitle = getActiveFilterLabels(parsedMetric, sliceConfig)
+    .map((dim) => `${dim.dimension}: ${dim.categories.join(' & ')}`)
     .join(', ')
     .trim();
 
-  const graphTitle = title
-    ? `${title}` + (subtitle && activeDimensionLabel ? ` per ${activeDimensionLabel}` : '')
-    : null;
-  // Get the dimension that is currently sliced by
   const slicedDim = sliceConfig.dimensionId
     ? parsedMetric.dimsById.get(sliceConfig.dimensionId)
     : undefined;
 
-  const slice: MetricSlice =
-    (slicedDim ? sliceBy(parsedMetric, slicedDim.id, true, sliceConfig.categories) : null) ??
-    flatten(parsedMetric, sliceConfig.categories);
+  // Categories whose values are all zero are dropped unless the instance asks
+  // to show them (`showZerosInGraphs`); then they stay in the graph, legend and
+  // tooltip, even though their bars have no height. Categories with no data at
+  // all are dropped either way.
+  const filterZero = !instance.features?.showZerosInGraphs;
+  const slice: MetricSliceData =
+    (slicedDim
+      ? sliceBy(parsedMetric, slicedDim.id, true, sliceConfig.categories, true, { filterZero })
+      : null) ?? flatten(parsedMetric, sliceConfig.categories);
 
   const goals = getGoalsForChoice(parsedMetric, sliceConfig.categories);
   const showBaseline =
     baselineForecast && site?.baselineName && instance.features?.baselineVisibleInGraphs;
 
-  // Define current year setup
-  // eslint-disable-next-line prefer-const
-  let { filteredYears, yearIndices, referenceYear, visibleForecastRange } = getFilteredYears(
-    slice,
-    instance,
-    startYear,
-    endYear
-  );
-
-  const allFilteredYears = filteredYears;
-
+  const yearRange = getFilteredYears(slice, instance, startYear, endYear);
+  let { filteredYears, yearIndices } = yearRange;
+  const { referenceYear, visibleForecastRange } = yearRange;
+  const rangeYears = filteredYears;
   if (separateYears && separateYears.length > 0) {
     // separateYears bypasses the visible range and minimumHistoricalYear clipping:
     // we display exactly the requested years, including any (such as the reference
-    // year) that fall outside the normal historical/forecast range. Selecting from
-    // the full set of slice years rather than the already-clipped filteredYears
-    // ensures those out-of-range years are not dropped.
+    // year) that fall outside the normal historical/forecast range.
     const allYears = [...slice.historicalYears, ...slice.forecastYears];
     filteredYears = allYears.filter((year) => separateYears.includes(year));
     yearIndices = filteredYears.map((year) => allYears.indexOf(year));
   }
 
-  const filteredProgressValues: number[] = [];
-  const filteredProgressYears: number[] = [];
-
-  // Create filtered data for progress tracking
   // Only show progress data for years where the metric has actual measured data
-  const measureDatapointYears = metric.measureDatapointYears ?? [];
-  const hasMeasuredYearsBeyondBaseline = measureDatapointYears.some(
+  const hasMeasuredYearsBeyondBaseline = (metric.measureDatapointYears ?? []).some(
     (year) => year !== instance.referenceYear && year !== site?.minYear
   );
+  const progress =
+    metrics.progress && slicedDim && site && hasMeasuredYearsBeyondBaseline
+      ? getProgressValues(
+          metrics.progress,
+          slice,
+          slicedDim.id,
+          sliceConfig,
+          metric,
+          instance,
+          site
+        )
+      : null;
 
-  if (hasProgressTracking && slicedDim && hasMeasuredYearsBeyondBaseline) {
-    const progressScenario = getProgressTrackingScenario(site!.scenarios);
+  // Full data for each category in the chart
+  const dataCategories = slice.categoryValues.map((cv) => ({
+    name: cv.category.label,
+    values: [...cv.historicalValues, ...cv.forecastValues],
+  }));
 
-    // Build category choice that filters to the progress tracking scenario dimension
-    const scenarioDim = parsedMetric.dimensions.find((dim) =>
-      dim.id.endsWith(':scenario:ScenarioName')
-    );
-    const progressCat = scenarioDim?.categories.find(
-      (cat) => cat.originalId === progressScenario?.id
-    );
-    const progressChoice: MetricCategoryChoice =
-      scenarioDim && progressCat
-        ? {
-            ...sliceConfig.categories,
-            [scenarioDim.id]: { categories: [progressCat.id], groups: null },
-          }
-        : sliceConfig.categories;
-
-    const progressSlice = sliceBy(parsedMetric, slicedDim.id, true, progressChoice);
-
-    // Filter progress years to only include years where this specific metric has measured data
-    const progressYears =
-      progressScenario?.actualHistoricalYears?.filter(
-        (year) =>
-          year !== instance.referenceYear &&
-          measureDatapointYears.includes(year) &&
-          year !== site?.minYear
-      ) ?? [];
-
-    if (progressSlice?.totalValues && progressYears?.length) {
-      const referenceYearIndex = slice.historicalYears.findIndex(
-        (year) => year === instance.referenceYear
-      );
-
-      const historicalYears =
-        referenceYearIndex !== -1
-          ? progressSlice.historicalYears.slice(referenceYearIndex + 1)
-          : progressSlice.historicalYears;
-
-      const historicalValues =
-        referenceYearIndex !== -1
-          ? (progressSlice.totalValues.historicalValues.slice(referenceYearIndex + 1) ?? [])
-          : (progressSlice.totalValues.historicalValues ?? []);
-
-      const lastHist = slice.historicalYears.length - 1;
-      const totalSumX = [site!.minYear, ...historicalYears, ...progressSlice.forecastYears];
-      const totalSumY = [
-        slice?.totalValues?.historicalValues?.[lastHist] ?? 0,
-        ...historicalValues,
-        ...progressSlice.totalValues.forecastValues,
-      ];
-
-      /**
-       * Filter out data for years that are not in the progress scenario.
-       * Include the reference year in order to draw a line from the total reference
-       * year emissions to the first observed year emissions.
-       */
-      const { x: filteredX, y: filteredY } = totalSumX.reduce(
-        (acc, x, index) =>
-          [instance.referenceYear, ...progressYears].includes(x)
-            ? { x: [...acc.x, x], y: [...acc.y, totalSumY[index]] }
-            : acc,
-        { x: [] as number[], y: [] as number[] }
-      );
-
-      filteredProgressYears.push(...filteredX);
-      filteredProgressValues.push(...filteredY.filter((y) => y !== null));
-    }
-  }
-
-  // Collect full data for each category in the chart
-  const dataCategories: { name: string; values: (number | null)[]; color: string | null }[] =
-    slice.categoryValues.map((cv: MetricCategoryValues) => ({
-      name: cv.category.label,
-      values: [...cv.historicalValues, ...cv.forecastValues],
-      color: cv.color,
-    }));
-
-  // Create simple tables for category data, goal data, baseline data, progress data, and total data
-  // Using the filtered years
+  // Simple tables for category, goal, baseline, progress and total data, for the filtered years
   const headerRow = ['Category', ...filteredYears];
   const datasetTable = [
     headerRow,
     ...dataCategories.map((row) => [row.name, ...yearIndices.map((idx) => row.values[idx])]),
-  ].filter((row) => row.length > 0);
+  ];
 
+  // Goals are shown for the years of the range, also when only some years are compared
   const goalYears =
-    goals !== null ? allFilteredYears.filter((year) => goals.some((g) => g.year === year)) : [];
+    goals !== null ? rangeYears.filter((year) => goals.some((g) => g.year === year)) : [];
   const goalTable =
     goals !== null && goalYears.length > 0
       ? [
@@ -327,106 +338,145 @@ export default function DimensionalNodeVisualisation({
       ]
     : null;
 
-  const progressTable =
-    filteredProgressValues.length > 0 && filteredProgressYears.length > 0
-      ? [
-          headerRow,
-          [
-            'Progress',
-            ...filteredYears.map(
-              (year) => filteredProgressValues[filteredProgressYears.indexOf(year)] ?? null
-            ),
-          ],
-        ]
-      : null;
+  const progressTable = progress?.years.length
+    ? [
+        headerRow,
+        [
+          'Progress',
+          ...filteredYears.map((year) => progress.values[progress.years.indexOf(year)] ?? null),
+        ],
+      ]
+    : null;
 
+  const totalValues = slice.totalValues
+    ? [...slice.totalValues.historicalValues, ...slice.totalValues.forecastValues]
+    : null;
   const totalTable =
-    slice.totalValues && metric.stackable
-      ? [
-          headerRow,
-          [
-            'Total',
-            ...yearIndices.map(
-              (idx) =>
-                [...slice.totalValues!.historicalValues, ...slice.totalValues!.forecastValues][idx]
-            ),
-          ],
-        ]
+    totalValues && metric.stackable
+      ? [headerRow, ['Total', ...yearIndices.map((idx) => totalValues[idx])]]
       : null;
 
-  // Define colors for the categories
+  // Colors are assigned over the *unfiltered* series of the sliced dimension, so that
+  // a category keeps its color regardless of which categories are filtered out.
+  // Same zero handling as `slice`, so a zero-valued category gets its own color.
   const defaultColor = color || theme.graphColors.blue050;
-  const categoryColors: string[] = [];
-  const someCategoriesHaveColorSet = slice.categoryValues.some((cv) => cv.color);
-
-  if (dataCategories.length > 1) {
-    if (color || someCategoriesHaveColorSet) {
-      // This mutates the slice.categoryValues array!!
+  const colorSlice = slicedDim
+    ? (sliceBy(parsedMetric, slicedDim.id, true, {}, true, { filterZero }) ?? slice)
+    : slice;
+  const seriesColors = new Map<string, string>();
+  if (colorSlice.categoryValues.length > 1) {
+    // If we were asked to use a specific color, we generate the color scheme around it.
+    // But always use category set color if available
+    if (color || colorSlice.categoryValues.some((cv) => cv.color)) {
+      const series = colorSlice.categoryValues.map((cv) => ({
+        id: cv.category.id,
+        color: cv.color,
+      }));
       setUniqueColors(
-        slice.categoryValues as MetricCategoryValues[],
-        (cv) => cv.color,
-        (cv, newColor) => {
-          (cv as { color: string | null }).color = newColor;
+        series,
+        (s) => s.color,
+        (s, newColor) => {
+          s.color = newColor;
         },
         defaultColor
       );
-      categoryColors.push(...slice.categoryValues.map((cv) => cv.color ?? defaultColor));
+      series.forEach((s) => seriesColors.set(s.id, s.color ?? defaultColor));
     } else {
-      categoryColors.push(...genColorsFromTheme(theme, dataCategories.length));
-    }
-  } else {
-    categoryColors.push(defaultColor);
-  }
-  if (colorAdjust) {
-    for (let i = 0; i < categoryColors.length; i++) {
-      categoryColors[i] = chroma(categoryColors[i]).brighten(colorAdjust).hex();
+      const themeColors = genColorsFromTheme(theme, colorSlice.categoryValues.length);
+      colorSlice.categoryValues.forEach((cv, idx) => {
+        seriesColors.set(cv.category.id, themeColors[idx]);
+      });
     }
   }
-
-  const hasNegativeValues = slice.categoryValues.some(
-    (cv) =>
-      cv.historicalValues.some((value) => Number(value) < 0) ||
-      cv.forecastValues.some((value) => Number(value) < 0)
+  // If there is only one series in total, we use the default color
+  const categoryColors = slice.categoryValues.map((cv) => {
+    const seriesColor = seriesColors.get(cv.category.id) ?? defaultColor;
+    return colorAdjust ? chroma(seriesColor).brighten(colorAdjust).hex() : seriesColor;
+  });
+  // Colors of the series visible in the chart, for the category buttons of the sliced dimension
+  const visibleSeriesColors = new Map(
+    slice.categoryValues.map((cv, idx) => [cv.category.id, categoryColors[idx]])
   );
+
+  // Show the total line when some values are negative. Check the whole data,
+  // not just the selected year range.
+  const hasNegativeValues = slice.categoryValues.some((cv) =>
+    [...cv.historicalValues, ...cv.forecastValues].some((value) => Number(value) < 0)
+  );
+
+  // All dimensions are shown, even those with a single category, so users can see
+  // what the data consists of; the default breakdown still prefers one with several.
+  // The breakdown choice is only shown when there are several dimensions.
+  const controlDims = parsedMetric.dimensions;
+  const controls =
+    withControls && controlDims.length > 0 ? (
+      <DimensionControls
+        dimensions={controlDims}
+        labels={labels.controls}
+        options={controlDims.map((dim) =>
+          getOptionsForDimension(parsedMetric, dim.id, sliceConfig.categories)
+        )}
+        withBreakdown={controlDims.length > 1}
+        slicedDimensionId={slicedDim?.id}
+        seriesColors={visibleSeriesColors}
+        onSliceChange={(dimensionId) => {
+          setSliceConfig((old) => ({ ...old, dimensionId }));
+        }}
+        onFilterChange={(dim, selected) => {
+          setSliceConfig((old) => updateChoice(parsedMetric, dim, old, selected));
+        }}
+      />
+    ) : null;
+
+  const chartRef = useRef<ChartHandle | null>(null);
+  const chartTitle = title
+    ? title + (subtitle && activeDimensionLabel ? `: ${activeDimensionLabel}` : '')
+    : null;
+
+  // The CO2e correction is applied to both units, as the graph uses the short
+  // unit in tooltips and the long one on the axis
+  const unit = overrideUnit(parsedMetric, metric.unit, (key) => labels.units[key]);
 
   return (
     <>
-      {withControls && (
-        <DimensionControls
-          parsedMetric={parsedMetric}
-          sliceConfig={sliceConfig}
-          setSliceConfig={setSliceConfig}
-          t={t}
-        />
-      )}
+      {controls}
       <Box sx={{ position: 'relative' }}>
         <NodeGraph
-          title={graphTitle}
+          title={chartTitle}
           subtitle={subtitle}
           dataTable={datasetTable}
           goalTable={goalTable}
           baselineTable={baselineTable}
           progressTable={progressTable}
           totalTable={totalTable}
-          unit={{
-            htmlLong: overrideUnit(parsedMetric, metric.unit, t),
-            htmlShort: metric.unit.htmlShort,
-          }}
+          unit={{ htmlLong: unit, htmlShort: unit }}
           referenceYear={referenceYear}
           forecastRange={visibleForecastRange}
           categoryColors={categoryColors}
           theme={theme}
-          maximumFractionDigits={instance.features?.maximumFractionDigits ?? undefined}
           formatValue={formatValue}
+          formatAxisValue={formatAxisValue}
+          maximumFractionDigits={instance.features?.maximumFractionDigits ?? undefined}
+          predictionLabel={labels.prediction}
+          labels={labels.graph}
           baselineLabel={site?.baselineName}
           showTotalLine={hasNegativeValues && metric.stackable && dataCategories.length > 1}
           onClickMeasuredEmissions={onClickMeasuredEmissions}
           forecastTitle={forecastTitle}
           stackable={metric.stackable}
           chartType={chartType}
-          predictionLabel={t('table-scenario-forecast')}
+          chartRef={chartRef}
         />
-        {withTools && <ToolsMenu cube={parsedMetric} sliceConfig={sliceConfig} t={t} />}
+        {withTools && (
+          <ToolsMenu
+            cube={parsedMetric}
+            sliceConfig={sliceConfig}
+            chartRef={chartRef}
+            pngFilename={chartTitle ?? metric.name}
+            filterZero={filterZero}
+            labels={labels.tools}
+          />
+        )}
       </Box>
     </>
   );

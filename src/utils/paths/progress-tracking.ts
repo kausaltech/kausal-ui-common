@@ -1,17 +1,24 @@
-import { type DimensionalNodeMetricFragment, ScenarioKind } from '@/common/__generated__/graphql';
+import type { MetricInput } from '@common/utils/paths/metric';
 
-type SiteContextScenario = {
+/*
+ * Values of the Paths API's `ScenarioKind` enum. The apps' generated enums
+ * have these values, so their scenarios are assignable to `SiteContextScenario`.
+ */
+const PROGRESS_TRACKING = 'PROGRESS_TRACKING';
+const BASELINE = 'BASELINE';
+
+export type SiteContextScenario = {
   id: string;
-  kind: ScenarioKind;
-  actualHistoricalYears?: number[] | null;
+  kind: string | null;
+  actualHistoricalYears?: readonly number[] | null;
 };
 
-type SiteContextType = {
-  scenarios: SiteContextScenario[];
+export type SiteContextType = {
+  scenarios: readonly SiteContextScenario[];
   minYear: number;
 };
 
-type Metric = NonNullable<DimensionalNodeMetricFragment['metricDim']>;
+type Metric = Pick<MetricInput, 'dimensions'>;
 
 function getScenariosFromMetric(metric: Metric) {
   const scenarioDim = metric.dimensions.find((dim) => dim.id.endsWith(':scenario:ScenarioName'));
@@ -19,30 +26,39 @@ function getScenariosFromMetric(metric: Metric) {
   return scenarioDim?.categories ?? [];
 }
 
-export function getProgressTrackingScenario(scenarios: SiteContextScenario[]) {
-  return scenarios.find((scenario) => scenario.kind === ScenarioKind.ProgressTracking);
+export function getProgressTrackingScenario(scenarios: readonly SiteContextScenario[]) {
+  return scenarios.find((scenario) => scenario.kind === PROGRESS_TRACKING);
+}
+
+export function getBaselineScenario(scenarios: readonly SiteContextScenario[]) {
+  return (
+    scenarios.find((scenario) => scenario.kind === BASELINE) ??
+    scenarios.find((scenario) => scenario.id === 'baseline')
+  );
+}
+
+function metricHasScenario(metric: Metric, scenario: SiteContextScenario | undefined) {
+  if (!scenario) return false;
+  return getScenariosFromMetric(metric).some((cat) => cat.originalId === scenario.id);
 }
 
 export function metricHasProgressTrackingScenario(
   metric: Metric,
-  scenarios: SiteContextScenario[]
+  scenarios: readonly SiteContextScenario[]
 ) {
-  const progressTrackingScenario = getProgressTrackingScenario(scenarios);
+  return metricHasScenario(metric, getProgressTrackingScenario(scenarios));
+}
 
-  if (!progressTrackingScenario) {
-    return false;
-  }
-
-  const scenariosFromMetric = getScenariosFromMetric(metric);
-
-  return !!scenariosFromMetric.find(
-    (scenario) => scenario.originalId === progressTrackingScenario.id
-  );
+export function metricHasBaselineScenario(
+  metric: Metric,
+  scenarios: readonly SiteContextScenario[]
+) {
+  return metricHasScenario(metric, getBaselineScenario(scenarios));
 }
 
 export function hasProgressTracking(
   metric: Metric,
-  scenarios: SiteContextScenario[],
+  scenarios: readonly SiteContextScenario[],
   minYear: number
 ) {
   return (
@@ -58,7 +74,7 @@ export function getLatestProgressYear(site: SiteContextType) {
   const progressYears =
     progressTrackingScenario?.actualHistoricalYears
       ?.filter((year) => year !== site.minYear)
-      ?.sort((a, b) => b - a) ?? [];
+      .sort((a, b) => b - a) ?? [];
 
   return progressYears[0] ?? null;
 }
