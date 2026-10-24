@@ -143,7 +143,11 @@ export default function NodeGraph(props: NodeGraphProps) {
     comparisonYear: tt('comparison-year'),
     forecast: tt('table-scenario-forecast'),
   };
-  const resolvedChartType: ChartType = chartType ?? (stackable ? 'bar' : 'line');
+  // Bars and areas are always stacked, so a metric whose values cannot be summed (a share, a
+  // ratio, an emission factor) is drawn as lines whatever chart type the caller asks for.
+  // Callers pass a chart type unconditionally (DimensionalNodeVisualisation defaults to 'bar',
+  // Watch takes it from the goal), so checking `stackable` only as the fallback is not enough.
+  const resolvedChartType: ChartType = stackable ? (chartType ?? 'bar') : 'line';
   const resolvedShowTotalLine = resolvedChartType === 'area' ? false : showTotalLine;
 
   // Figure out the start year of the dataset sans reference year
