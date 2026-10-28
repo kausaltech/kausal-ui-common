@@ -1,5 +1,5 @@
 #syntax=docker/dockerfile:1.22-labs
-ARG base_image=node:26-alpine3.23
+ARG base_image=node:26.12.1-alpine3.24
 
 #
 # Install dependencies
