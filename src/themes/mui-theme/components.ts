@@ -1,3 +1,4 @@
+import { buttonClasses } from '@mui/material/Button';
 import type { ComponentNameToClassKey, ComponentsProps, ThemeOptions } from '@mui/material/styles';
 
 import type { Theme } from '@kausal/themes/types';
@@ -42,6 +43,10 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           // Keyboard focus only, as Bootstrap's .btn:focus-visible did
           '&.Mui-focusVisible': {
             boxShadow: `0 0 0 0.25rem ${theme.inputBtnFocusColor}`,
+          } satisfies StyleOverrides<'MuiButton'>,
+          // Text on the page background, which a light brand colour fails
+          [`&.${buttonClasses.text}.${buttonClasses.colorPrimary}`]: {
+            color: theme.linkColor,
           } satisfies StyleOverrides<'MuiButton'>,
         },
         sizeSmall: {
