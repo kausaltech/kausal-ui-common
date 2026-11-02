@@ -3,6 +3,9 @@ import { css } from '@emotion/react';
 /** Shortest word to hyphenate; the backend hyphenates Finnish words from the same length */
 export const HYPHENATE_MIN_WORD_LENGTH = 16;
 
+/** Shortest word to hyphenate in page headings, whose large text needs it on narrow screens */
+export const HEADING_HYPHENATE_MIN_WORD_LENGTH = 10;
+
 /**
  * Hyphenation for headings and other titles. The browser hyphenates only long
  * words, which German needs and English seldom has. Browsers hyphenate Finnish
