@@ -48,6 +48,10 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           [`&.${buttonClasses.text}.${buttonClasses.colorPrimary}`]: {
             color: theme.linkColor,
           } satisfies StyleOverrides<'MuiButton'>,
+          [`&.${buttonClasses.outlined}.${buttonClasses.colorPrimary}`]: {
+            color: theme.linkColor,
+            borderColor: theme.linkColor,
+          } satisfies StyleOverrides<'MuiButton'>,
         },
         sizeSmall: {
           lineHeight: theme.lineHeightSm,
