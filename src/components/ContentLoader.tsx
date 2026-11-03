@@ -41,13 +41,14 @@ const ContentLoader = ({
   }
 
   return (
+    // A progressbar's content is not read out, so it needs a label
     <Loader
       aria-busy="true"
       style={{ height: fullPage ? 'calc(100vh - 24rem)' : '3rem' }}
       role="progressbar"
+      aria-label={message}
     >
       <KausalProgressDots />
-      <div className="visually-hidden">{message}</div>
     </Loader>
   );
 };

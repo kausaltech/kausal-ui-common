@@ -1,12 +1,22 @@
+import { buttonClasses } from '@mui/material/Button';
 import type { ComponentNameToClassKey, ComponentsProps, ThemeOptions } from '@mui/material/styles';
 
 import type { Theme } from '@kausal/themes/types';
+import { getContrast } from 'polished';
 
 type StyleOverrides<Name extends keyof ComponentNameToClassKey> = NonNullable<
   NonNullable<ComponentsProps[Name]>['style']
 >;
 
 export function getComponents(theme: Theme): ThemeOptions['components'] {
+  // Text on the page background: brandDark, unless it is under 4.5:1 there
+  const primaryTextColor =
+    getContrast(theme.brandDark, theme.themeColors.white) >= 4.5
+      ? theme.brandDark
+      : theme.linkColor;
+  // Leaves disabled buttons to MUI's disabled colours
+  const enabled = `:not(.${buttonClasses.disabled})`;
+
   return {
     MuiContainer: {
       styleOverrides: {
@@ -42,6 +52,13 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           // Keyboard focus only, as Bootstrap's .btn:focus-visible did
           '&.Mui-focusVisible': {
             boxShadow: `0 0 0 0.25rem ${theme.inputBtnFocusColor}`,
+          } satisfies StyleOverrides<'MuiButton'>,
+          [`&.${buttonClasses.text}.${buttonClasses.colorPrimary}${enabled}`]: {
+            color: primaryTextColor,
+          } satisfies StyleOverrides<'MuiButton'>,
+          [`&.${buttonClasses.outlined}.${buttonClasses.colorPrimary}${enabled}`]: {
+            color: primaryTextColor,
+            borderColor: primaryTextColor,
           } satisfies StyleOverrides<'MuiButton'>,
         },
         sizeSmall: {

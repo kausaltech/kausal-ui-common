@@ -6,6 +6,10 @@ import type { Theme } from '@emotion/react';
 import { Global, css } from '@emotion/react';
 
 import { useTheme } from '@common/themes';
+import {
+  HEADING_HYPHENATE_MIN_WORD_LENGTH,
+  titleHyphenation,
+} from '@common/themes/styles/hyphenation';
 
 const getGlobalStyles = (theme: Theme) => css`
   :root {
@@ -80,10 +84,11 @@ const getGlobalStyles = (theme: Theme) => css`
     line-height: ${theme.lineHeightMd};
     color: ${theme.headingsColor};
     text-transform: ${theme.headingsTextTransform} !important;
-    hyphens: auto;
+    ${titleHyphenation}
+    hyphenate-limit-chars: ${HEADING_HYPHENATE_MIN_WORD_LENGTH};
 
-    // Allow hyphenation only on small screens
-    ${theme.breakpoints.up('sm')} {
+    // Wide screens have room for long words, apart from Finnish soft hyphens
+    ${theme.breakpoints.up('md')} {
       hyphens: none;
     }
   }
