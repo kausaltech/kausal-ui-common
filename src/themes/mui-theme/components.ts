@@ -14,6 +14,8 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
     getContrast(theme.brandDark, theme.themeColors.white) >= 4.5
       ? theme.brandDark
       : theme.linkColor;
+  // Leaves disabled buttons to MUI's disabled colours
+  const enabled = `:not(.${buttonClasses.disabled})`;
 
   return {
     MuiContainer: {
@@ -51,10 +53,10 @@ export function getComponents(theme: Theme): ThemeOptions['components'] {
           '&.Mui-focusVisible': {
             boxShadow: `0 0 0 0.25rem ${theme.inputBtnFocusColor}`,
           } satisfies StyleOverrides<'MuiButton'>,
-          [`&.${buttonClasses.text}.${buttonClasses.colorPrimary}`]: {
+          [`&.${buttonClasses.text}.${buttonClasses.colorPrimary}${enabled}`]: {
             color: primaryTextColor,
           } satisfies StyleOverrides<'MuiButton'>,
-          [`&.${buttonClasses.outlined}.${buttonClasses.colorPrimary}`]: {
+          [`&.${buttonClasses.outlined}.${buttonClasses.colorPrimary}${enabled}`]: {
             color: primaryTextColor,
             borderColor: primaryTextColor,
           } satisfies StyleOverrides<'MuiButton'>,
