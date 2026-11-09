@@ -295,7 +295,8 @@ export function Chart({
     <div
       ref={wrapperRef}
       className={className}
-      style={{ height }}
+      // ECharts measures text without the page's letter-spacing
+      style={{ height, letterSpacing: 'normal' }}
       aria-busy={isLoading || isRendering ? 'true' : undefined}
     />
   );
