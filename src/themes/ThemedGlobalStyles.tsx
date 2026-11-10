@@ -29,6 +29,28 @@ const getGlobalStyles = (theme: Theme) => css`
     }
   }
 
+  /* Themes set --footer-decoration-height for a shape above .site-footer */
+  :root {
+    /* 0 without a decoration */
+    --footer-decoration-clearance: calc(
+      var(--footer-decoration-height, 0px) +
+        min(var(--footer-decoration-height, 0px), ${theme.spaces.s100})
+    );
+    --block-padding-bottom-at-footer: max(
+      var(--block-padding-bottom),
+      var(--footer-decoration-clearance)
+    );
+  }
+
+  /* Room for the decoration on pages that don't reserve it */
+  #main {
+    padding-bottom: var(--footer-decoration-height, 0px);
+  }
+
+  #main:has([data-reserves-footer-space]) {
+    padding-bottom: 0;
+  }
+
   html {
     scroll-behavior: auto !important;
   }
@@ -83,7 +105,8 @@ const getGlobalStyles = (theme: Theme) => css`
     font-weight: ${theme.headingsFontWeight};
     line-height: ${theme.lineHeightMd};
     color: ${theme.headingsColor};
-    text-transform: ${theme.headingsTextTransform} !important;
+    /* No !important: layered, it would beat theme CSS */
+    text-transform: ${theme.headingsTextTransform};
     ${titleHyphenation}
     hyphenate-limit-chars: ${HEADING_HYPHENATE_MIN_WORD_LENGTH};
 
