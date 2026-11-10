@@ -245,7 +245,8 @@ export function flatten(
         forecastValues,
         historicalValues,
         category: {
-          id: metric.id,
+          // The undimensioned metric is its own total; same id as the total series above.
+          id: 'total',
           label: metric.name,
           color: null,
           order: null,

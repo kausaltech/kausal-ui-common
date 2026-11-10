@@ -79,7 +79,6 @@ export function buildMetric(spec: {
   walk(spec.dimensions, {});
 
   return {
-    id: spec.id,
     name: spec.name,
     dimensions: spec.dimensions.map((dim) => makeDimension(spec.id, dim)),
     goals: spec.goals ?? [],

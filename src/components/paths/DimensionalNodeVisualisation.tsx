@@ -224,8 +224,9 @@ export default function DimensionalNodeVisualisation({
 
   // The dimension to break down by and the category filters. They start from
   // the defaults for the active goal, and reset to them when the metric or the
-  // goal changes.
-  const sliceConfigKey = `${metric.id}:${activeGoal?.id ?? ''}`;
+  // goal changes. A metric has no identity of its own (it is a computed cube), so
+  // its name and dimensions stand in for one.
+  const sliceConfigKey = `${metric.name}:${metric.dimensions.map((dim) => dim.id).join(',')}:${activeGoal?.id ?? ''}`;
   const defaultConfig = useMemo(
     () => getDefaultSliceConfig(parsedMetric, activeGoal),
     [parsedMetric, activeGoal]

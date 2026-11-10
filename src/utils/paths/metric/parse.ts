@@ -119,7 +119,6 @@ export function parseMetric(input: MetricInput, scenarioId: string = 'default'):
   const rows = createRows(data, dimensions);
 
   return {
-    id: data.id,
     name: data.name,
     unit: data.unit,
     stackable: data.stackable,

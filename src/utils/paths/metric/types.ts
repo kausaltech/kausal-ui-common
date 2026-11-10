@@ -94,7 +94,6 @@ export type MetricNormalizedByInput = {
  * Your GraphQL fragment must include at least these fields.
  */
 export type MetricInput = {
-  readonly id: string;
   readonly name: string;
   readonly dimensions: readonly MetricDimensionInput[];
   readonly goals: readonly MetricGoalInput[];
@@ -164,7 +163,6 @@ export type MetricRow = {
  * The parsed/processed metric data structure.
  */
 export type ParsedMetric = {
-  readonly id: string;
   readonly name: string;
   readonly unit: { readonly htmlShort: string; readonly short: string };
   readonly stackable: boolean;
