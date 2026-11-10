@@ -29,6 +29,26 @@ const getGlobalStyles = (theme: Theme) => css`
     }
   }
 
+  /* Themes set --footer-decoration-height for a shape above .site-footer */
+  :root {
+    --footer-decoration-clearance: calc(
+      var(--footer-decoration-height, 0px) + ${theme.spaces.s100}
+    );
+    --block-padding-bottom-at-footer: max(
+      var(--block-padding-bottom),
+      var(--footer-decoration-clearance)
+    );
+  }
+
+  /* Room for the decoration on pages that don't reserve it */
+  #main {
+    padding-bottom: var(--footer-decoration-height, 0px);
+  }
+
+  #main:has([data-reserves-footer-space]) {
+    padding-bottom: 0;
+  }
+
   html {
     scroll-behavior: auto !important;
   }
