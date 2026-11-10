@@ -31,8 +31,10 @@ const getGlobalStyles = (theme: Theme) => css`
 
   /* Themes set --footer-decoration-height for a shape above .site-footer */
   :root {
+    /* 0 without a decoration */
     --footer-decoration-clearance: calc(
-      var(--footer-decoration-height, 0px) + ${theme.spaces.s100}
+      var(--footer-decoration-height, 0px) +
+        min(var(--footer-decoration-height, 0px), ${theme.spaces.s100})
     );
     --block-padding-bottom-at-footer: max(
       var(--block-padding-bottom),
