@@ -105,7 +105,8 @@ const getGlobalStyles = (theme: Theme) => css`
     font-weight: ${theme.headingsFontWeight};
     line-height: ${theme.lineHeightMd};
     color: ${theme.headingsColor};
-    text-transform: ${theme.headingsTextTransform} !important;
+    /* No !important: layered, it would beat theme CSS */
+    text-transform: ${theme.headingsTextTransform};
     ${titleHyphenation}
     hyphenate-limit-chars: ${HEADING_HYPHENATE_MIN_WORD_LENGTH};
 
