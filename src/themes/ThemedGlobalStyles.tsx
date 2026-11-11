@@ -47,7 +47,8 @@ const getGlobalStyles = (theme: Theme) => css`
     padding-bottom: var(--footer-decoration-height, 0px);
   }
 
-  #main:has([data-reserves-footer-space]) {
+  /* Only when the reserving content renders last; later siblings may render nothing */
+  #main:has([data-reserves-footer-space]:nth-last-child(1 of :not(:empty))) {
     padding-bottom: 0;
   }
 
