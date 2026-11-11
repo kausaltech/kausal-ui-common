@@ -67,7 +67,7 @@ describe('parseMetric', () => {
     const parsed = parseMetric(scenarios);
     expect(parsed.dimensions.map((d) => d.originalId)).toEqual(['sector']);
     expect(summary(flatten(parsed, undefined))).toEqual([
-      { id: 'scen', historical: [4, 6], forecast: [] },
+      { id: 'total', historical: [4, 6], forecast: [] },
     ]);
   });
 
@@ -382,17 +382,17 @@ describe('sliceBy', () => {
 });
 
 describe('flatten', () => {
-  it('sums everything into one series named after the metric', () => {
+  it('sums everything into one total series', () => {
     const slice = flatten(metric, undefined);
     expect(slice.dimensionLabel).toBe('Greenhouse gas emissions');
     expect(slice.totalValues).toBeNull();
-    expect(summary(slice)).toEqual([{ id: 'emissions', historical: [37, 41], forecast: [45, 49] }]);
+    expect(summary(slice)).toEqual([{ id: 'total', historical: [37, 41], forecast: [45, 49] }]);
   });
 
   it('applies the filters', () => {
     const choice = { [em.sector]: { groups: null, categories: [em.buildings] } };
     expect(summary(flatten(metric, choice))?.[0]).toEqual({
-      id: 'emissions',
+      id: 'total',
       historical: [17, 20],
       forecast: [23, 26],
     });
