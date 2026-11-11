@@ -28,8 +28,8 @@
     "@sentry/nextjs": ">=10",
     "@sentry/node": ">=10",
     "@sentry/opentelemetry": ">=10",
-    "@sentry/vercel-edge": ">=10",
     "@sentry/profiling-node": ">=10",
+    "@sentry/vercel-edge": ">=10",
     "@typescript-eslint/types": ">=8.58.2",
     "ansi-styles": ">=6",
     "chalk": ">=5",
@@ -60,8 +60,8 @@
   "devDependencies": {
     "@eslint/config-helpers": "^0.7.0",
     "@eslint/core": "^1.2.1",
-    "@typescript-eslint/types": "^8.68.0",
-    "eslint-config-next": "^16.3.3",
-    "eslint-plugin-storybook": "^10.5.10"
+    "@typescript-eslint/types": "^8.72.2",
+    "eslint-config-next": "^16.4.6",
+    "eslint-plugin-storybook": "^10.6.7"
   }
 }
