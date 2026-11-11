@@ -64,7 +64,9 @@ export function initSentryBrowser() {
     release: getSentryRelease(),
     dsn,
     tunnel: API_SENTRY_TUNNEL_PATH,
-    sendDefaultPii: true,
+    dataCollection: {
+      userInfo: true,
+    },
     enabled: !!(envDsn || spotlightUrl),
     maxValueLength: !envDsn && spotlightUrl ? 10000 : undefined,
     ignoreErrors: ['NEXT_NOT_FOUND', 'Failed to find Server Action'],
